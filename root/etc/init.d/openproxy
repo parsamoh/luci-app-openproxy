@@ -53,7 +53,7 @@ configure_nftables() {
     if [ "$dns_port" != "53" ] ; then
         # 配置DNS转发#
         if [ -z "$(nft list chain inet fw4 dstnat |grep 'OpenProxy DNS Hijack')" ]; then
-            nft insert rule inet fw4 dstnat position 0 udp dport 53 redirect to "$dns_port" comment \"OpenProxy DNS Hijack\"
+            nft insert rule inet fw4 dstnat position 0 iifname != "wt0" iifname != "netbird0" udp dport 53 redirect to "$dns_port" comment \"OpenProxy DNS Hijack\"
         fi
     fi
 
@@ -77,8 +77,11 @@ cleanup_nftables() {
     [[ -z "$dns_port" ]] && dns_port="$DNS_PORT"
     if [ "$dns_port" != "53" ] ; then
         # 配置DNS转发#
-        if [ -z "$(nft list chain inet fw4 dstnat |grep 'OpenProxy DNS Hijack')" ]; then
-            nft delete rule inet fw4 dstnat position 0 udp dport 53 redirect to "$dns_port"
+        if [ ! -z "$(nft list chain inet fw4 dstnat |grep 'OpenProxy DNS Hijack')" ]; then
+            handle=$(nft -a list chain inet fw4 dstnat | grep 'OpenProxy DNS Hijack' | awk '{print $NF}')
+            if [ ! -z "$handle" ]; then
+                nft delete rule inet fw4 dstnat handle $handle
+            fi
         fi
     fi
     LOGGER "3.清理路由规则"

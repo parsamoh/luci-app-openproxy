@@ -20,6 +20,9 @@ table inet oproxy_tproxy {
     ip6 daddr @local_ipv6 return
     ip daddr @cnipv4 return
     ip6 daddr @cnipv6 return
+    udp dport 51820 return
+    iifname "wt0" return
+    iifname "netbird0" return
     meta l4proto $TPROXY_L4PROTO meta mark set $ROUTER_MARK tproxy to :$TPROXY_PORT accept
   }
 
@@ -32,6 +35,7 @@ table inet oproxy_tproxy {
     ip6 daddr @local_ipv6 return
     ip daddr @cnipv4 return
     ip6 daddr @cnipv6 return
+    udp dport 51820 return
     meta l4proto $TPROXY_L4PROTO meta mark set $ROUTER_MARK accept
   }
 }
