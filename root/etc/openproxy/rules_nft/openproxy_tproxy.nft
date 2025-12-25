@@ -12,8 +12,9 @@ table inet oproxy_tproxy {
   }
 
   chain prerouting {
-    type filter hook prerouting priority mangle; policy accept;
+    type filter hook prerouting priority -145; policy accept;
     meta mark $TPROXY_MARK return
+    meta mark & 0x0001ff00 == 0x0001bd00 return
     udp dport 53 return
     tcp dport 53 return
     ip daddr @local_ipv4 return
