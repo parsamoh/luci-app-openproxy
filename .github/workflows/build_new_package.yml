@@ -48,10 +48,10 @@ jobs:
       uses: actions/cache@v4
       id: cache-sdk
       with:
-        path: openwrt_sdk
-        key: openwrt-sdk-${{ matrix.sdk_version }}-${{ hashFiles('.github/workflows/build_new_package.yml') }}
+        path: openwrt-sdk-*
+        key: openwrt-sdk-snapshot-${{ hashFiles('.github/workflows/build_new_package.yml') }}
         restore-keys: |
-          openwrt-sdk-${{ matrix.sdk_version }}-
+          openwrt-sdk-snapshot-
 
     - name: Download OpenWrt Snapshot SDK
       if: steps.cache-sdk.outputs.cache-hit != 'true'
@@ -76,10 +76,16 @@ jobs:
 
     - name: Verify SDK directory
       run: |
-        if [ ! -d "openwrt_sdk" ]; then
-          echo "Error: openwrt_sdk directory not found after cache restore or download"
+        # Find the actual SDK directory
+        SDK_DIR=$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -1)
+        if [ -z "$SDK_DIR" ]; then
+          echo "Error: No openwrt-sdk-* directory found"
           ls -la
           exit 1
+        fi
+        # Create symlink if it doesn't exist
+        if [ ! -L "openwrt_sdk" ]; then
+          ln -sf "$(basename $SDK_DIR)" openwrt_sdk
         fi
         echo "SDK directory verified: $(readlink -f openwrt_sdk)"
 
@@ -164,7 +170,7 @@ jobs:
       uses: actions/cache@v4
       id: cache-sdk
       with:
-        path: openwrt_sdk
+        path: openwrt-sdk-*
         key: openwrt-sdk-${{ matrix.sdk_version }}-${{ hashFiles('.github/workflows/build_new_package.yml') }}
         restore-keys: |
           openwrt-sdk-${{ matrix.sdk_version }}-
@@ -187,10 +193,16 @@ jobs:
 
     - name: Verify SDK directory
       run: |
-        if [ ! -d "openwrt_sdk" ]; then
-          echo "Error: openwrt_sdk directory not found after cache restore or download"
+        # Find the actual SDK directory
+        SDK_DIR=$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -1)
+        if [ -z "$SDK_DIR" ]; then
+          echo "Error: No openwrt-sdk-* directory found"
           ls -la
           exit 1
+        fi
+        # Create symlink if it doesn't exist
+        if [ ! -L "openwrt_sdk" ]; then
+          ln -sf "$(basename $SDK_DIR)" openwrt_sdk
         fi
         echo "SDK directory verified: $(readlink -f openwrt_sdk)"
 
