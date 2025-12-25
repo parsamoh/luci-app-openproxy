@@ -74,6 +74,15 @@ jobs:
         tar axf ${sdk_name}.tar.zst
         ln -sf ${sdk_name} openwrt_sdk
 
+    - name: Verify SDK directory
+      run: |
+        if [ ! -d "openwrt_sdk" ]; then
+          echo "Error: openwrt_sdk directory not found after cache restore or download"
+          ls -la
+          exit 1
+        fi
+        echo "SDK directory verified: $(readlink -f openwrt_sdk)"
+
     - name: Cache feeds
       uses: actions/cache@v4
       with:
@@ -83,6 +92,7 @@ jobs:
         key: openwrt-feeds-snapshot-${{ hashFiles('openwrt_sdk/feeds.conf.default') }}
         restore-keys: |
           openwrt-feeds-snapshot-
+      continue-on-error: true
 
     - name: Set up OpenWrt SDK
       run: |
@@ -175,6 +185,15 @@ jobs:
         tar axf $sdk_name.tar.zst
         ln -sf $sdk_name openwrt_sdk
 
+    - name: Verify SDK directory
+      run: |
+        if [ ! -d "openwrt_sdk" ]; then
+          echo "Error: openwrt_sdk directory not found after cache restore or download"
+          ls -la
+          exit 1
+        fi
+        echo "SDK directory verified: $(readlink -f openwrt_sdk)"
+
     - name: Cache feeds
       uses: actions/cache@v4
       with:
@@ -184,6 +203,7 @@ jobs:
         key: openwrt-feeds-${{ matrix.sdk_version }}-${{ hashFiles('openwrt_sdk/feeds.conf.default') }}
         restore-keys: |
           openwrt-feeds-${{ matrix.sdk_version }}-
+      continue-on-error: true
 
     - name: Set up OpenWrt SDK
       run: |
