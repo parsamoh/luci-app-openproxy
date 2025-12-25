@@ -126,8 +126,13 @@ check_config_file() {
     mode=$(uci -q get openproxy.config.mode)
     [[ "$mode" =~ "TPROXY" ]] && tmode_expr=".routing-mark=${TPROXY_MARK}|.tproxy-port=${TPROXY_PORT}|"
 
-    yacd_url="http://${LANIP}:${YACD_PORT}/ui/yacd?hostname=${LANIP}&port=${YACD_PORT}&secret=${YACD_SECRET}"
-    uci set openproxy.config.yacd_url=${yacd_url}
+    # 获取选择的仪表板类型
+    dashboard_type=$(uci -q get openproxy.config.dashboard_type)
+    [[ -z "$dashboard_type" ]] && dashboard_type="yacd" # 默认使用yacd
+    DASHBOARD_UI="$WORK_PATH/ui/$dashboard_type"
+    
+    dashboard_url="http://${LANIP}:${YACD_PORT}/ui/${dashboard_type}?hostname=${LANIP}&port=${YACD_PORT}&secret=${YACD_SECRET}"
+    uci set openproxy.config.yacd_url=${dashboard_url}
     uci commit openproxy
 
     # proxy-providers 和 rule-providers 目录修改
@@ -135,10 +140,10 @@ check_config_file() {
     rule_expr='.["rule-providers"] |= with_entries(select(.value.type == "http") | .value.path |= sub("^.*/", "./providers_rule/"),select(.value.type == "file") | .value.path |= sub("^.*/", "./custom_rule/"))|'
     
     # 收尾表达式，结尾没有竖线哦
-    ui_expr=".external-controller=strenv(ext_ctl)|.external-ui=strenv(YACD_UI)|.secret=strenv(tmp_secret)"
+    ui_expr=".external-controller=strenv(ext_ctl)|.external-ui=strenv(DASHBOARD_UI)|.secret=strenv(tmp_secret)"
     yq_expr="${port_expr}${ipv6_expr}${tmode_expr}${proxy_expr}${rule_expr}${ui_expr}"
     config_path="$(uci -q get openproxy.config.config_path)"
-    tmp_secret=${YACD_SECRET} YACD_UI=${YACD_UI} ext_ctl="${LANIP}:${YACD_PORT}" dns_listen=":${dns_port}" enmode="fake-ip" yq e -P "${yq_expr}" ${config_path} > ${CONFIG_FILE}
+    tmp_secret=${YACD_SECRET} DASHBOARD_UI=${DASHBOARD_UI} ext_ctl="${LANIP}:${YACD_PORT}" dns_listen=":${dns_port}" enmode="fake-ip" yq e -P "${yq_expr}" ${config_path} > ${CONFIG_FILE}
 }
 start_service() {
     enable=$(uci -q get openproxy.config.enable)

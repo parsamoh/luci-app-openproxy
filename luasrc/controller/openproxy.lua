@@ -215,6 +215,7 @@ function api_service_apply()
     local p_core = http.formvalue("core")
     local p_mode = http.formvalue("mode")
     local p_config_path = http.formvalue("config_path")
+    local p_dashboard_type = http.formvalue("dashboard_type")
     if enable_value == "1" or enable_value == "true" then
         uci:set(service_name, "config", "enable", '1')
     else
@@ -233,6 +234,9 @@ function api_service_apply()
     if p_core then
         fs.unlink(core_link) -- 先删除软链接
         fs.symlink(p_core, core_link) -- 创建软链接到配置文件
+    end
+    if p_dashboard_type then
+        uci:set(service_name, "config", "dashboard_type", p_dashboard_type)
     end
     uci:set(service_name, "config", "core", p_core)
     uci:set(service_name, "config", "mode", p_mode or "NAT+TPROXY")
@@ -278,6 +282,7 @@ function api_get_service_config()
     status.core = uci:get(service_name, "config", "core")
     status.mode = uci:get(service_name, "config", "mode")
     status.config_path = uci:get(service_name, "config", "config_path")
+    status.dashboard_type = uci:get(service_name, "config", "dashboard_type") or "yacd"
 
     -- 返回 JSON 格式的状态信息
     http.prepare_content("application/json")

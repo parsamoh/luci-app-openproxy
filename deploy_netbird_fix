@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Deploy Netbird compatibility fixes to OpenWRT router
+# Usage: ./deploy_netbird_fix <router_ip>
+
+set -e
+
+ROUTER_IP="${1:-192.168.1.1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "🚀 Deploying Netbird compatibility fixes to $ROUTER_IP..."
+
+# Check if files exist
+if [ ! -f "$SCRIPT_DIR/root/etc/openproxy/rules_nft/openproxy_tproxy.nft" ]; then
+    echo "❌ Error: openproxy_tproxy.nft not found"
+    exit 1
+fi
+
+if [ ! -f "$SCRIPT_DIR/root/etc/openproxy/rules_nft/openproxy_tproxy_trans_ipv6.nft" ]; then
+    echo "❌ Error: openproxy_tproxy_trans_ipv6.nft not found"
+    exit 1
+fi
+
+if [ ! -f "$SCRIPT_DIR/root/etc/init.d/openproxy" ]; then
+    echo "❌ Error: init.d/openproxy not found"
+    exit 1
+fi
+
+# Deploy files
+echo "📦 Copying nftables rules..."
+scp "$SCRIPT_DIR/root/etc/openproxy/rules_nft/openproxy_tproxy.nft" \
+    "root@$ROUTER_IP:/etc/openproxy/rules_nft/"
+
+scp "$SCRIPT_DIR/root/etc/openproxy/rules_nft/openproxy_tproxy_trans_ipv6.nft" \
+    "root@$ROUTER_IP:/etc/openproxy/rules_nft/"
+
+echo "📦 Copying init script..."
+scp "$SCRIPT_DIR/root/etc/init.d/openproxy" \
+    "root@$ROUTER_IP:/etc/init.d/"
+
+# Restart service
+echo "🔄 Restarting OpenProxy service..."
+ssh "root@$ROUTER_IP" "/etc/init.d/openproxy restart"
+
+echo "✅ Deployment complete!"
+echo ""
+echo "Changes applied:"
+echo "  • Priority adjusted to -145 (runs after Netbird)"
+echo "  • Excluded Netbird interfaces (wt0, netbird0)"
+echo "  • Excluded Netbird port (UDP 51820)"
+echo "  • Excluded Netbird DNS hijacking"
+echo ""
+echo "Your internet should now work with Netbird running."
