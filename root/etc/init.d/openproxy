@@ -131,7 +131,7 @@ check_config_file() {
     [[ -z "$dashboard_type" ]] && dashboard_type="yacd" # 默认使用yacd
     DASHBOARD_UI="$WORK_PATH/ui/$dashboard_type"
     
-    dashboard_url="http://${LANIP}:${YACD_PORT}/ui/${dashboard_type}?hostname=${LANIP}&port=${YACD_PORT}&secret=${YACD_SECRET}"
+    dashboard_url="http://${LANIP}:${YACD_PORT}/ui?hostname=${LANIP}&port=${YACD_PORT}&secret=${YACD_SECRET}"
     uci set openproxy.config.yacd_url=${dashboard_url}
     uci commit openproxy
 
