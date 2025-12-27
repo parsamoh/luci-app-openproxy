@@ -23,6 +23,11 @@ define Package/$(PKG_NAME)/description
     A LuCI support for OpenProxy
 endef
 
+define Package/$(PKG_NAME)/conffiles
+/etc/config/openproxy
+/etc/openproxy/
+endef
+
 define Build/Prepare
 	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
