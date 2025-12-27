@@ -24,128 +24,6 @@ on:
       - 'images/**'
 
 jobs:
-  build_apk:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        sdk_version: ['snapshot']
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-apk-${{ matrix.sdk_version }}
-
-    steps:
-    - name: Cache apt packages
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: build-essential git wget curl unzip
-        version: 1.0
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential git wget curl unzip
-
-    - name: Cache OpenWrt SDK
-      uses: actions/cache@v4
-      id: cache-sdk
-      with:
-        path: openwrt-sdk-*
-        key: openwrt-sdk-snapshot-${{ hashFiles('.github/workflows/build_new_package.yml') }}
-        restore-keys: |
-          openwrt-sdk-snapshot-
-
-    - name: Download OpenWrt Snapshot SDK
-      if: steps.cache-sdk.outputs.cache-hit != 'true'
-      run: |
-        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/snapshots/targets/x86/64/)
-        # 使用正则表达式提取 SDK 文件名（支持 .tar.zst 格式）
-        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP 'openwrt-sdk-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
-        
-        if [ -z "$SDK_FILENAME" ]; then
-          echo "未找到 SDK 文件"
-          exit 1
-        fi
-        
-        # 构建完整 URL
-        SDK_URL="https://downloads.openwrt.org/snapshots/targets/x86/64/$SDK_FILENAME"
-
-        echo "找到 SDK 文件: $SDK_FILENAME"
-        sdk_name=${SDK_FILENAME%.tar.zst}
-        wget -c https://downloads.openwrt.org/snapshots/targets/x86/64/${sdk_name}.tar.zst
-        tar axf ${sdk_name}.tar.zst
-        ln -sf ${sdk_name} openwrt_sdk
-
-    - name: Verify SDK directory
-      run: |
-        # Find the actual SDK directory
-        SDK_DIR=$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -1)
-        if [ -z "$SDK_DIR" ]; then
-          echo "Error: No openwrt-sdk-* directory found"
-          ls -la
-          exit 1
-        fi
-        # Create symlink if it doesn't exist
-        if [ ! -L "openwrt_sdk" ]; then
-          ln -sf "$(basename $SDK_DIR)" openwrt_sdk
-        fi
-        echo "SDK directory verified: $(readlink -f openwrt_sdk)"
-
-    - name: Cache feeds
-      uses: actions/cache@v4
-      with:
-        path: |
-          openwrt_sdk/feeds
-          openwrt_sdk/staging_dir/host
-        key: openwrt-feeds-snapshot-${{ hashFiles('openwrt_sdk/feeds.conf.default') }}
-        restore-keys: |
-          openwrt-feeds-snapshot-
-      continue-on-error: true
-
-    - name: Set up OpenWrt SDK
-      run: |
-        cd openwrt_sdk
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.ref }}
-        path: openwrt_sdk/package/luci-app-openproxy
-        fetch-depth: 1
-
-    - name: Cache build artifacts
-      uses: actions/cache@v4
-      with:
-        path: |
-          openwrt_sdk/build_dir
-          openwrt_sdk/staging_dir
-        key: build-cache-apk-${{ github.sha }}
-        restore-keys: |
-          build-cache-apk-
-
-    - name: Build APK package
-      run: |
-        cd openwrt_sdk/
-        make defconfig
-        make package/luci-app-openproxy/prepare
-        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1))
-
-    - name: Generate build summary
-      if: always()
-      run: |
-        echo "### Build Summary (APK)" >> $GITHUB_STEP_SUMMARY
-        echo "- SDK Version: ${{ matrix.sdk_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Packages:" >> $GITHUB_STEP_SUMMARY
-        ls -lh openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy* >> $GITHUB_STEP_SUMMARY || true
-
-    - name: Upload .apk package
-      id: upload_apk
-      uses: actions/upload-artifact@v4
-      with:
-        name: luci-app-openproxy-apk
-        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.apk
-
   build_ipk:
     runs-on: ubuntu-latest
     strategy:
@@ -274,9 +152,50 @@ jobs:
         name: luci-app-openproxy-ipk
         path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.ipk
 
+  beta_release:
+    runs-on: ubuntu-latest
+    needs: [build_ipk]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Display structure of downloaded files
+      run: ls -R
+    
+    - name: Get short SHA
+      id: short_sha
+      run: echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+    
+    - name: Create Beta Pre-release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: beta-${{ steps.short_sha.outputs.sha_short }}
+        name: Beta Release (${{ steps.short_sha.outputs.sha_short }})
+        prerelease: true
+        files: |
+          luci-app-openproxy-ipk/*.ipk
+        body: |
+          ## Beta Release
+          
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Build Date:** ${{ github.event.head_commit.timestamp }}
+          
+          This is an automated beta pre-release built from the latest commit to `${{ github.ref_name }}`.
+          
+          ### Changes
+          ${{ github.event.head_commit.message }}
+          
+          ---
+          
+          **⚠️ Warning:** This is a pre-release version and may contain bugs. Use at your own risk.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     runs-on: ubuntu-latest
-    needs: [build_ipk, build_apk]
+    needs: [build_ipk]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
     - name: Download build artifacts
@@ -289,7 +208,6 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         files: |
-          luci-app-openproxy-apk/*.apk
           luci-app-openproxy-ipk/*.ipk
         body_path: luci-app-openproxy-changelog/CHANGELOG.md
       env:
