@@ -9,6 +9,7 @@ local config_link = "/etc/openproxy/config.yaml"
 local core_link = "/etc/openproxy/clash"
 local service_name = "openproxy"
 local service_log = "/tmp/openproxy.log"
+local mihomo_log = "/tmp/mihomo.log"
 local init_script = "/etc/init.d/openproxy"
 local device_name = uci:get("system", "@system[0]", "hostname")
 local device_arh = sys.exec("uname -m |tr -d '\n'")
@@ -24,6 +25,8 @@ function index()
     entry({"admin", "services", service_name, "options"}, cbi("openproxy/options"), _("Options"), page_index)
     page_index = page_index + 1
     entry({"admin", "services", service_name, "help"}, template("openproxy/help"), _("Help"), page_index)
+    page_index = page_index + 1
+    entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
 
     -- API接口：动态获取文件内容
     entry({"admin", "services", service_name, "api", "file_content"}, call("api_get_file_content")).leaf = true
@@ -37,6 +40,8 @@ function index()
     entry({"admin", "services", service_name, "api", "load_editor_status"}, call("api_load_editor_status")).leaf = true
     entry({"admin", "services", service_name, "api", "update_value"}, call("api_update_value")).leaf = true
     entry({"admin", "services", service_name, "api", "backup"}, call("api_backup_config")).leaf = true
+    entry({"admin", "services", service_name, "api", "get_logs"}, call("api_get_logs")).leaf = true
+    entry({"admin", "services", service_name, "api", "clear_logs"}, call("api_clear_logs")).leaf = true
 end
 
 ----------------------------------------------------------------------------------
@@ -387,3 +392,33 @@ function api_backup_config()
     http.prepare_content("application/x-targz")
     luci.ltn12.pump.all(reader, http.write)
 end
+
+--- 功能： 获取mihomo日志内容
+function api_get_logs()
+    local logs = ""
+    if fs.access(mihomo_log) then
+        -- Read last 500 lines to avoid overwhelming the browser
+        logs = sys.exec("tail -n 500 " .. mihomo_log .. " 2>/dev/null")
+    end
+    
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        logs = logs,
+        message = "Logs retrieved successfully"
+    })
+end
+
+--- 功能： 清空mihomo日志
+function api_clear_logs()
+    if fs.access(mihomo_log) then
+        fs.writefile(mihomo_log, "")
+    end
+    
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        message = "Logs cleared successfully"
+    })
+end
+

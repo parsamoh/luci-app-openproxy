@@ -157,11 +157,21 @@ start_service() {
     LOGGER "2.Yaml文件格式化配置"
     ! check_config_file && return 1
     LOGGER "Yaml文件检查完成."
+    
+    # Create log rotation wrapper
+    MIHOMO_LOG="/tmp/mihomo.log"
+    # Rotate log if it's larger than 1MB
+    if [ -f "$MIHOMO_LOG" ]; then
+        log_size=$(stat -c%s "$MIHOMO_LOG" 2>/dev/null || stat -f%z "$MIHOMO_LOG" 2>/dev/null || echo 0)
+        if [ "$log_size" -gt 1048576 ]; then
+            tail -n 1000 "$MIHOMO_LOG" > "$MIHOMO_LOG.tmp"
+            mv "$MIHOMO_LOG.tmp" "$MIHOMO_LOG"
+        fi
+    fi
+    
     procd_open_instance
-    procd_set_param command ${PROC_BIN} -d ${WORK_PATH}
+    procd_set_param command /bin/sh -c "${PROC_BIN} -d ${WORK_PATH} >> /tmp/mihomo.log 2>&1"
     procd_set_param respawn
-    procd_set_param stdout 1 # 将命令的 stdout 转发到 logd
-    procd_set_param stderr 1  # 同样处理 stderr
     procd_close_instance
     LOGGER "3.进程 ${PROC_BIN} 启动完成!"
 }

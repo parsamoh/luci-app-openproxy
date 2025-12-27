@@ -1,0 +1,190 @@
+<%+header%>
+    <h2>
+        <%:OpenProxy - Logs%>
+    </h2>
+    <div style="margin: 10px 0;">
+        <form method="post">
+            <fieldset class="cbi-section">
+                <legend>
+                    <%:Mihomo Logs%>
+                </legend>
+                <div class="cbi-value">
+                    <label class="cbi-field-title">
+                        <%:Filter Level%>:
+                    </label>
+                    <div class="cbi-value-field">
+                        <select id="log_filter" onchange="filterLogs()">
+                            <option value="all">All</option>
+                            <option value="info">Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="cbi-value">
+                    <label class="cbi-field-title">
+                        <%:Auto Refresh%>:
+                    </label>
+                    <div class="cbi-value-field">
+                        <input type="checkbox" id="auto_refresh" checked onchange="toggleAutoRefresh()" />
+                    </div>
+                </div>
+                <div class="cbi-value">
+                    <input id="btn_clear" type="button" class="btn cbi-button cbi-button-remove"
+                        value="<%:Clear Logs%>" />
+                    <input id="btn_refresh" type="button" class="btn cbi-button cbi-button-reload"
+                        value="<%:Refresh%>" />
+                </div>
+                <br />
+                <div class="cbi-value" style="width: 100%; display: block;">
+                    <label class="cbi-field-title">
+                        <%:Log Content%>:
+                    </label>
+                    <div id="log_content"
+                        style="background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 500px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                        Loading...
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+    <style>
+        .cbi-value {
+            display: inline-flex;
+            width: 300px !important;
+            flex-wrap: nowrap;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .cbi-field-title {
+            width: 120px;
+        }
+
+        .btn {
+            max-width: 150px;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .log-info {
+            color: #0f0;
+        }
+
+        .log-warning {
+            color: #ff0;
+        }
+
+        .log-error {
+            color: #f00;
+        }
+
+        .log-debug {
+            color: #0ff;
+        }
+    </style>
+    <script type="text/javascript">
+        let autoRefreshInterval = null;
+        let allLogs = "";
+
+        function getLogs() {
+            fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "get_logs")%>')
+                .then(response => response.json())
+                .then(data => {
+                    allLogs = data.logs || "";
+                    filterLogs();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById("log_content").innerText = "Error loading logs: " + error;
+                });
+        }
+
+        function filterLogs() {
+            const filterLevel = document.getElementById("log_filter").value;
+            const logContent = document.getElementById("log_content");
+
+            if (!allLogs) {
+                logContent.innerText = "No logs available";
+                return;
+            }
+
+            let filteredLogs = allLogs;
+            if (filterLevel !== "all") {
+                const lines = allLogs.split('\n');
+                filteredLogs = lines.filter(line =>
+                    line.toLowerCase().includes('level=' + filterLevel)
+                ).join('\n');
+            }
+
+            // Colorize logs based on level
+            const colorizedLogs = filteredLogs
+                .replace(/level=info/g, '<span class="log-info">level=info</span>')
+                .replace(/level=warning/g, '<span class="log-warning">level=warning</span>')
+                .replace(/level=error/g, '<span class="log-error">level=error</span>')
+                .replace(/level=debug/g, '<span class="log-debug">level=debug</span>');
+
+            logContent.innerHTML = colorizedLogs || "No matching logs";
+
+            // Auto-scroll to bottom
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function clearLogs() {
+            if (!confirm('<%:Are you sure you want to clear all logs?%>')) {
+                return;
+            }
+
+            fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "clear_logs")%>', {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    getLogs();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing logs');
+                });
+        }
+
+        function toggleAutoRefresh() {
+            const autoRefresh = document.getElementById("auto_refresh").checked;
+
+            if (autoRefresh) {
+                // Refresh every 3 seconds
+                autoRefreshInterval = setInterval(getLogs, 3000);
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        window.onload = function () {
+            getLogs();
+            document.getElementById('btn_clear').onclick = clearLogs;
+            document.getElementById('btn_refresh').onclick = getLogs;
+
+            // Start auto-refresh by default
+            toggleAutoRefresh();
+        };
+
+        // Clean up interval on page unload
+        window.onbeforeunload = function () {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        };
+    </script>
+    <%+footer%>

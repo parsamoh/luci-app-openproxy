@@ -35,7 +35,7 @@ mode: rule
 
 # 默认情况下, Clash 将日志打印到 STDOUT
 # 日志级别: info / warning / error / debug / silent
-log-level: warning
+log-level: info
 
 # 当设置为 false 时, 解析器不会将主机名解析为 IPv6 地址
 # ipv6: false
