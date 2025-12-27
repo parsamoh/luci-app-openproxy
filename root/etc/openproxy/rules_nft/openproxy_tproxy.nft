@@ -7,12 +7,12 @@ include "/etc/openproxy/rules_nft/nftset_all_cn_ips.nft"
 
 table inet oproxy_tproxy {
   chain divert {
-    type filter hook prerouting priority mangle; policy accept;
+    type filter hook prerouting priority -149; policy accept;
     meta l4proto $TPROXY_L4PROTO socket transparent 1 meta mark set $ROUTER_MARK accept
   }
 
   chain prerouting {
-    type filter hook prerouting priority -145; policy accept;
+    type filter hook prerouting priority -150; policy accept;
     meta mark $TPROXY_MARK return
     udp dport 53 return
     tcp dport 53 return
