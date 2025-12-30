@@ -1,4 +1,4 @@
-<%+cbi /valueheader%>
+<%+cbi/valueheader%>
     <% function getGoArch() local handle=io.popen("uname -m") local arch=handle:read("*a"):gsub("%s+", "" )
         handle:close() if arch=="x86_64" then return "linux-amd64" elseif arch=="i386" or arch=="i686" then
         return "linux-386" elseif arch=="armv7l" then return "linux-armv7" elseif arch:match("^aarch64") then
@@ -41,7 +41,7 @@
                 </a>
             </div>
         </div>
-        <%+cbi /valuefooter%>
+        <%+cbi/valuefooter%>
 
             <style>
                 .item-container {
