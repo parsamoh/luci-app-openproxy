@@ -215,12 +215,12 @@
             })
         }
         function get_service_status() {
-            // 动态加载服务状态
+            // Dynamically load service status
             XHR.poll(3, '<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "status")%>', null,
                 function (status_code, data) {
-                    // 更新服务状态
+                    // Update service status
                     document.getElementById('_service_tips').innerText = data["message"];
-                    // 填充其他字段
+                    // Fill other fields
                     document.getElementById("dashboard_btn").onclick = () => window.open(data["yacd_url"]);
                     document.getElementById("service_status").innerHTML = data["running"] ? '<b style="color: green;"><%:Running%></b>' : '<b style="color: red;"><%:Stoped%></b>';
                     document.getElementById("_service_tips").innerHTML = '<b style="color:white">' + data["last_log"] + "</b>";
@@ -234,15 +234,15 @@
             var ipv6Trans = document.getElementById('ipv6_trans');
             var enableIpv6 = document.getElementById('enable_ipv6');
             if (enableIpv6.checked) {
-                ipv6Trans.style.display = 'inline-flex'; // 显示选项
+                ipv6Trans.style.display = 'inline-flex'; // Show option
             } else {
-                ipv6Trans.style.display = 'none'; // 隐藏选项
+                ipv6Trans.style.display = 'none'; // Hide option
             }
         }
         window.onload = function () {
-            get_service_status();   // 获取服务状态
-            get_service_config();   // 获取服务配置参数
-            get_ip_status();        // 获取IPv4/IPv6检测结果
+            get_service_status();   // Get service status
+            get_service_config();   // Get service config parameters
+            get_ip_status();        // Get IPv4/IPv6 detection results
             document.getElementById('btn_apply').onclick = apply_config;
             document.getElementById('enable_ipv6').onchange = switch_ipv6_trans;
         };

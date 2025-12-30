@@ -1,135 +1,135 @@
-# HTTP(S) 代理服务端口
+# HTTP(S) proxy server port
 port: 7890
 
-# SOCKS5 代理服务端口
+# SOCKS5 proxy server port
 socks-port: 7891
 
-# Linux 和 macOS 的透明代理服务端口 (TCP 和 TProxy UDP 重定向)
+# Transparent proxy server port for Linux and macOS (TCP and TProxy UDP redirection)
 # redir-port: 7892
 
-# Linux 的透明代理服务端口 (TProxy TCP 和 TProxy UDP)
+# Transparent proxy server port for Linux (TProxy TCP and TProxy UDP)
 # tproxy-port: 7893
 
-# HTTP(S) 和 SOCKS4(A)/SOCKS5 代理服务共用一个端口
+# HTTP(S) and SOCKS4(A)/SOCKS5 proxy server share one port
 # mixed-port: 7890
 
-# 本地 SOCKS5/HTTP(S) 代理服务的认证
+# Authentication for local SOCKS5/HTTP(S) proxy server
 # authentication:
 #  - "user1:pass1"
 #  - "user2:pass2"
 
-# 设置为 true 以允许来自其他 LAN IP 地址的连接
+# Set to true to allow connections from other LAN IP addresses
 # allow-lan: false
 
-# 仅当 `allow-lan` 为 `true` 时有效
-# '*': 绑定所有 IP 地址
-# 192.168.122.11: 绑定单个 IPv4 地址
-# "[aaaa::a8aa:ff:fe09:57d8]": 绑定单个 IPv6 地址
+# Only valid when `allow-lan` is `true`
+# '*': Bind all IP addresses
+# 192.168.122.11: Bind single IPv4 address
+# "[aaaa::a8aa:ff:fe09:57d8]": Bind single IPv6 address
 # bind-address: '*'
 
-# Clash 路由工作模式
-# rule: 基于规则的数据包路由
-# global: 所有数据包将被转发到单个节点
-# direct: 直接将数据包转发到互联网
+# Clash routing mode
+# rule: Rule-based packet routing
+# global: All packets will be forwarded to a single node
+# direct: Directly forward packets to the Internet
 mode: rule
 
-# 默认情况下, Clash 将日志打印到 STDOUT
-# 日志级别: info / warning / error / debug / silent
+# By default, Clash prints logs to STDOUT
+# Log level: info / warning / error / debug / silent
 log-level: info
 
-# 当设置为 false 时, 解析器不会将主机名解析为 IPv6 地址
+# When set to false, the resolver will not resolve hostnames to IPv6 addresses
 # ipv6: false
 
-# RESTful Web API 监听地址
+# RESTful Web API listening address
 external-controller: 127.0.0.1:9090
 
-# 配置目录的相对路径或静态 Web 资源目录的绝对路径. Clash core 将在
-# `http://{{external-controller}}/ui` 中提供服务.
+# Relative path to the configuration directory or absolute path to the static Web resource directory. Clash core will serve at
+# `http://{{external-controller}}/ui`
 # external-ui: folder
 
-# RESTful API 密钥 (可选)
-# 通过指定 HTTP 头 `Authorization: Bearer ${secret}` 进行身份验证
-# 如果RESTful API在 0.0.0.0 上监听, 务必设置一个 secret 密钥.
+# RESTful API secret (Optional)
+# Authenticate by specifying HTTP header `Authorization: Bearer ${secret}`
+# If RESTful API listens on 0.0.0.0, be sure to set a secret key.
 # secret: ""
 
-# 出站接口名称
+# Outbound interface name
 # interface-name: en0
 
-# fwmark (仅在 Linux 上有效)
+# fwmark (Only valid on Linux)
 # routing-mark: 6666
 
-# 用于DNS服务器和连接建立的静态主机 (如/etc/hosts) .
+# Static hosts for DNS server and connection establishment (like /etc/hosts).
 #
-# 支持通配符主机名 (例如 *.clash.dev, *.foo.*.example.com)
-# 非通配符域名优先级高于通配符域名
-# 例如 foo.example.com > *.example.com > .example.com
-# P.S. +.foo.com 等于 .foo.com 和 foo.com
+# Support wildcard hostnames (e.g. *.clash.dev, *.foo.*.example.com)
+# Non-wildcard domain names have higher priority than wildcard domain names
+# e.g. foo.example.com > *.example.com > .example.com
+# P.S. +.foo.com equals .foo.com and foo.com
 # hosts:
   # '*.clash.dev': 127.0.0.1
   # '.dev': 127.0.0.1
   # 'alpha.clash.dev': '::1'
 
 # profile:
-  # 将 `select` 手动选择 结果存储在 $HOME/.config/clash/.cache 中
-  # 如果不需要此行为, 请设置为 false
-  # 当两个不同的配置具有同名的组时, 将共享所选值
+  # Store `select` manual results in $HOME/.config/clash/.cache
+  # Set to false if this behavior is not needed
+  # When two different configurations have groups with the same name, the selected value will be shared
   # store-selected: true
 
-  # 持久化 fakeip
+  # Persist fakeip
   # store-fake-ip: false
 
-# DNS 服务设置
-# 此部分是可选的. 当不存在时, DNS 服务将被禁用.
+# DNS service settings
+# This section is optional. When not present, DNS service will be disabled.
 dns:
   enable: false
   listen: 0.0.0.0:53
-  # ipv6: false # 当为 false 时, AAAA 查询的响应将为空
+  # ipv6: false # When false, AAAA query response will be empty
 
-  # 这些 名称服务器(nameservers) 用于解析下列 DNS 名称服务器主机名.
-  # 仅指定 IP 地址
+  # These nameservers are used to resolve the following DNS nameserver hostnames.
+  # Specifying IP addresses only
   default-nameserver:
     - 114.114.114.114
     - 8.8.8.8
   # enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16 # Fake IP 地址池 CIDR
-  # use-hosts: true # 查找 hosts 并返回 IP 记录
+  fake-ip-range: 198.18.0.1/16 # Fake IP address pool CIDR
+  # use-hosts: true # Look up hosts and return IP records
 
-  # search-domains: [local] # A/AAAA 记录的搜索域
+  # search-domains: [local] # Search domains for A/AAAA records
 
-  # 此列表中的主机名将不会使用 Fake IP 解析
-  # 即, 对这些域名的请求将始终使用其真实 IP 地址进行响应
+  # Hostnames in this list will not be resolved using Fake IP
+  # i.e., requests to these domains will always be responded to with their real IP addresses
   # fake-ip-filter:
   #   - '*.lan'
   #   - localhost.ptlogin2.qq.com
 
-  # 支持 UDP、TCP、DoT、DoH. 您可以指定要连接的端口.
-  # 所有 DNS 查询都直接发送到名称服务器, 无需代理
-  # Clash 使用第一个收到的响应作为 DNS 查询的结果.
+  # Supports UDP, TCP, DoT, DoH. You can specify the port to connect to.
+  # All DNS queries are sent directly to nameservers without proxy
+  # Clash uses the first received response as the DNS query result.
   nameserver:
-    - 114.114.114.114 # 默认值
-    - 8.8.8.8 # 默认值
+    - 114.114.114.114 # Default
+    - 8.8.8.8 # Default
     - tls://dns.rubyfish.cn:853 # DNS over TLS
     - https://1.1.1.1/dns-query # DNS over HTTPS
-    - dhcp://en0 # 来自 dhcp 的 dns
+    - dhcp://en0 # DNS from DHCP
     # - '8.8.8.8#en0'
 
-  # 当 `fallback` 存在时, DNS 服务器将向此部分中的服务器
-  # 与 `nameservers` 中的服务器发送并发请求
-  # 当 GEOIP 国家不是 `CN` 时, 将使用 fallback 服务器的响应
+  # When 'fallback' exists, the DNS server will send concurrent requests to servers in this section
+  # and servers in 'nameservers'
+  # When GEOIP country is not 'CN', the response from fallback servers will be used
   # fallback:
   #   - tcp://1.1.1.1
   #   - 'tcp://1.1.1.1#en0'
 
-  # 如果使用 `nameservers` 解析的 IP 地址在下面指定的子网中,
-  # 则认为它们无效, 并使用 `fallback` 服务器的结果.
+  # If the IP address resolved using 'nameservers' is in the subnet specified below,
+  # they are considered invalid, and results from 'fallback' servers are used.
   #
-  # 当 `fallback-filter.geoip` 为 true 且 IP 地址的 GEOIP 为 `CN` 时,
-  # 将使用 `nameservers` 服务器解析的 IP 地址.
+  # When 'fallback-filter.geoip' is true and the IP address's GEOIP is 'CN',
+  # the IP address resolved by 'nameservers' servers will be used.
   #
-  # 如果 `fallback-filter.geoip` 为 false, 且不匹配 `fallback-filter.ipcidr`,
-  # 则始终使用 `nameservers` 服务器的结果
+  # If 'fallback-filter.geoip' is false, and does not match 'fallback-filter.ipcidr',
+  # the results from 'nameservers' servers are always used
   #
-  # 这是对抗 DNS 污染攻击的一种措施.
+  # This is a measure against DNS pollution attacks.
   # fallback-filter:
   #   geoip: true
   #   geoip-code: CN
@@ -140,14 +140,14 @@ dns:
   #     - '+.facebook.com'
   #     - '+.youtube.com'
 
-  # 通过特定的名称服务器查找域名
+  # Lookup domains via specific nameservers
   # nameserver-policy:
   #   'www.baidu.com': '114.114.114.114'
   #   '+.internal.crop.com': '10.0.0.1'
 
 proxies:
   # Shadowsocks
-  # 支持的加密方法:
+  # Supported encryption methods:
   #   aes-128-gcm aes-192-gcm aes-256-gcm
   #   aes-128-cfb aes-192-cfb aes-256-cfb
   #   aes-128-ctr aes-192-ctr aes-256-ctr
@@ -180,7 +180,7 @@ proxies:
     password: "password"
     plugin: v2ray-plugin
     plugin-opts:
-      mode: websocket # 暂不支持 QUIC
+      mode: websocket # QUIC is not currently supported
       # tls: true # wss
       # skip-cert-verify: true
       # host: bing.com
@@ -190,7 +190,7 @@ proxies:
       #   custom: value
 
   # vmess
-  # 支持的加密方法:
+  # Supported encryption methods:
   #  auto/aes-128-gcm/chacha20-poly1305/none
   - name: "vmess"
     type: vmess
@@ -202,7 +202,7 @@ proxies:
     # udp: true
     # tls: true
     # skip-cert-verify: true
-    # servername: example.com # 优先于 wss 主机
+    # servername: example.com # Prioritize over wss host
     # network: ws
     # ws-opts:
     #   path: /path
@@ -281,7 +281,7 @@ proxies:
     # sni: custom.com
 
   # Snell
-  # 请注意, 目前还没有UDP支持.
+  # Please note, there is no UDP support currently.
   - name: "snell"
     type: snell
     server: server
@@ -299,7 +299,7 @@ proxies:
     port: 443
     password: yourpsk
     # udp: true
-    # sni: example.com # aka 服务器名称
+    # sni: example.com # aka Server Name
     # alpn:
     #   - h2
     #   - http/1.1
@@ -332,11 +332,11 @@ proxies:
       #   Host: example.com
 
   # ShadowsocksR
-  # 支持的加密方法: ss 中的所有流加密方法
-  # 支持的混淆方式:
+  # Supported encryption methods: All stream encryption methods in SS
+  # Supported obfuscation methods:
   #   plain http_simple http_post
   #   random_head tls1.2_ticket_auth tls1.2_ticket_fastauth
-  # 支持的协议:
+  # Supported protocols:
   #   origin auth_sha1_v4 auth_aes128_md5
   #   auth_aes128_sha1 auth_chain_a auth_chain_b
   - name: "ssr"
@@ -352,8 +352,8 @@ proxies:
     # udp: true
 
 proxy-groups:
-  # 中继链路代理节点. 节点不应包含中继. 不支持 UDP.
-  # 流量节点链路: clash <-> http <-> vmess <-> ss1 <-> ss2 <-> Internet
+  # Relay chain proxy nodes. Nodes should not contain relays. UDP is not supported.
+  # Traffic node chain: clash <-> http <-> vmess <-> ss1 <-> ss2 <-> Internet
   - name: "relay"
     type: relay
     proxies:
@@ -362,7 +362,7 @@ proxy-groups:
       - ss1
       - ss2
 
-  # url-test 通过对 指定URL 进行基准速度测试来选择将使用哪个代理.
+  # url-test selects which proxy to use by benchmarking speed against a specified URL.
   - name: "auto"
     type: url-test
     proxies:
@@ -374,7 +374,7 @@ proxy-groups:
     url: 'http://www.gstatic.com/generate_204'
     interval: 300
 
-  # fallback-auto 基于优先级选择可用策略. 可用性通过访问 指定URL 来测试, 就像自动 url-test 组一样.
+  # fallback-auto selects available policy based on priority. Availability is tested by accessing a specified URL, like the automatic url-test group.
   - name: "fallback-auto"
     type: fallback
     proxies:
@@ -384,7 +384,7 @@ proxy-groups:
     url: 'http://www.gstatic.com/generate_204'
     interval: 300
 
-  # 负载均衡: 同一 eTLD+1 的请求将拨号到同一代理.
+  # Load Balancing: Requests to the same eTLD+1 will be dialed to the same proxy.
   - name: "load-balance"
     type: load-balance
     proxies:
@@ -395,8 +395,8 @@ proxy-groups:
     interval: 300
     # strategy: consistent-hashing # or round-robin
 
-  # select 手动选择, 用于选择代理或策略组
-  # 您可以使用 RESTful API 来切换代理, 建议在GUI中切换.
+  # 'select' manual selection, used to select a proxy or policy group
+  # You can use RESTful API to switch proxies, it is recommended to switch in GUI.
   - name: Proxy
     type: select
     # disable-udp: true
@@ -407,7 +407,7 @@ proxy-groups:
       - vmess1
       - auto
 
-  # 直接连接到另一个接口名称或 fwmark, 也支持代理
+  # Connect directly to another interface name or fwmark, also supports proxy
   - name: en1
     type: select
     interface-name: en1
@@ -443,10 +443,10 @@ proxy-providers:
       url: http://www.gstatic.com/generate_204
 
 tunnels:
-  # 单行配置
+  # Single line configuration
   - tcp/udp,127.0.0.1:6553,114.114.114.114:53,proxy
   - tcp,127.0.0.1:6666,rds.mysql.com:3306,vpn
-  # 全 yaml 配置
+  # Full yaml configuration
   - network: [tcp, udp]
     address: 127.0.0.1:7777
     target: target.com
@@ -458,10 +458,10 @@ rules:
   - DOMAIN,google.com,auto
   - DOMAIN-SUFFIX,ad.com,REJECT
   - SRC-IP-CIDR,192.168.1.201/32,DIRECT
-  # 用于 IP 规则 (GEOIP, IP-CIDR, IP-CIDR6) 的可选参数 "no-resolve"
+  # Optional parameter "no-resolve" for IP rules (GEOIP, IP-CIDR, IP-CIDR6)
   - IP-CIDR,127.0.0.0/8,DIRECT
   - GEOIP,CN,DIRECT
   - DST-PORT,80,DIRECT
   - SRC-PORT,7777,DIRECT
-  - RULE-SET,apple,REJECT # 仅 Premium 版本支持
+  - RULE-SET,apple,REJECT # Only supported in Premium version
   - MATCH,auto

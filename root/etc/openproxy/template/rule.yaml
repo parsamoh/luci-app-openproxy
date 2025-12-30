@@ -1,6 +1,6 @@
 rules:
   ####################################################
-  # ！！！！ 规则配置参考示例，请不要修改此配置。！！！
+  # !!!! Rule Config Example. DO NOT MODIFY !!!
   ####################################################
   - DOMAIN,ad.com,REJECT
   - DOMAIN-SUFFIX,google.com,auto

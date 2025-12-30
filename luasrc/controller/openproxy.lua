@@ -15,7 +15,7 @@ local device_name = uci:get("system", "@system[0]", "hostname")
 local device_arh = sys.exec("uname -m |tr -d '\n'")
 
 function index()
-    -- 创建入口页面菜单
+    -- Create entry page menu
     local page_index = 1
     entry({"admin", "services", service_name}, firstchild(), _("OpenProxy"), 10).dependent = false
     entry({"admin", "services", service_name, "main"}, template("openproxy/main"), _("Main"), page_index)
@@ -28,7 +28,7 @@ function index()
     page_index = page_index + 1
     entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
 
-    -- API接口：动态获取文件内容
+    -- API Interface: Dynamically get file content
     entry({"admin", "services", service_name, "api", "file_content"}, call("api_get_file_content")).leaf = true
     entry({"admin", "services", service_name, "api", "save_file"}, call("api_save_file_content")).leaf = true
     entry({"admin", "services", service_name, "api", "delete_file"}, call("api_delete_file")).leaf = true
@@ -64,7 +64,7 @@ function set_uci_value(key, value)
     uci:commit(service_name)
 end
 
---- 更新配置信息
+--- Update configuration info
 function api_update_value()
     local key = http.formvalue("key")
     local value = http.formvalue("value")
@@ -112,7 +112,7 @@ function ltn12_popen(command)
         nixio.exec("/bin/sh", "-c", command)
     end
 end
--- 获取发行版信息
+-- Get distro info
 local function get_os_release_info()
     local file = io.open("/etc/os-release", "r")
     if not file then
@@ -123,7 +123,7 @@ local function get_os_release_info()
     for line in file:lines() do
         local key, value = line:match("^(%S+)=(.*)$")
         if key and value then
-            -- 去掉值两边的引号
+            -- Remove quotes around the value
             value = value:gsub('^"(.*)"$', '%1'):gsub("^'(.*)'$", '%1')
             os_info[key] = value
         end
@@ -132,7 +132,7 @@ local function get_os_release_info()
     return os_info
 end
 
--- 检查 opkg 是否可用
+-- Check if opkg is available
 local function is_opkg_available()
     local handle = io.popen("opkg --version")
     local result = handle:read("*l")
@@ -140,7 +140,7 @@ local function is_opkg_available()
     return result ~= nil
 end
 
--- 检查 apk 是否可用
+-- Check if apk is available
 local function is_apk_available()
     local handle = io.popen("apk --version")
     local result = handle:read("*l")
@@ -149,11 +149,11 @@ local function is_apk_available()
 end
 
 ----------------------------------------------------------------------------------
---- 功能： 查看文件内容
+--- Function: View file content
 function api_get_file_content()
     local file_path = http.formvalue("file")
     if file_path and fs.access(file_path) then
-        -- JSON返回 http.write(fs.readfile(file_path))
+        -- JSON return http.write(fs.readfile(file_path))
         http.prepare_content("application/json")
         http.write_json({
             status = 1000,
@@ -171,13 +171,13 @@ function api_get_file_content()
     end
 end
 
---- 功能： 保存文件内容
+--- Function: Save file content
 function api_save_file_content()
     local file_path = http.formvalue("file")
     local content = http.formvalue("content")
     if file_path and content then
         fs.writefile(file_path, content)
-        sys.call("yq e -Pi "..file_path)  -- 格式化yaml配置文件
+        sys.call("yq e -Pi "..file_path)  -- Format yaml config file
         http.prepare_content("application/json")
         http.write_json({
             status = 1000,
@@ -193,11 +193,11 @@ function api_save_file_content()
     end
 end
 
---- 功能： 删除文件
+--- Function: Delete file
 function api_delete_file()
     local file_path = http.formvalue("file")
     if file_path then
-        fs.unlink(file_path)-- 删除配置文件
+        fs.unlink(file_path)-- Delete config file
         http.prepare_content("application/json")
         http.write_json({
             status = 1000,
@@ -212,7 +212,7 @@ function api_delete_file()
     end
 end
 
---- 功能： 更新服务配置(同时重启服务)
+--- Function: Update service config (and restart service)
 function api_service_apply()
     local enable_value = http.formvalue("enable")
     local enable_ipv6 = http.formvalue("enable_ipv6")
@@ -237,8 +237,8 @@ function api_service_apply()
         uci:set(service_name, "config", "trans_ipv6", '0')
     end
     if p_core then
-        fs.unlink(core_link) -- 先删除软链接
-        fs.symlink(p_core, core_link) -- 创建软链接到配置文件
+        fs.unlink(core_link) -- Delete symlink first
+        fs.symlink(p_core, core_link) -- Create symlink to config file
     end
     if p_dashboard_type then
         uci:set(service_name, "config", "dashboard_type", p_dashboard_type)
@@ -277,7 +277,7 @@ function api_dns_apply()
         message = "Parameters saved successfully"
     })
 end
---- 功能： 查看服务配置信息
+--- Function: View service config info
 function api_get_service_config()
     local status = {}
 
@@ -289,12 +289,12 @@ function api_get_service_config()
     status.config_path = uci:get(service_name, "config", "config_path")
     status.dashboard_type = uci:get(service_name, "config", "dashboard_type") or "yacd"
 
-    -- 返回 JSON 格式的状态信息
+    -- Return status info in JSON format
     http.prepare_content("application/json")
     http.write_json(status)
 end
 
---- 功能: 查看DNS配置信息
+--- Function: View DNS config info
 function api_get_dns_config()
     local status = {}
     status.enable_custom_dns = uci:get(service_name, "config", "enable_custom_dns")
@@ -305,13 +305,13 @@ end
 
 local os_info = get_os_release_info()
 
---- 功能： 获取编译程序的架构类型
----@param arch_type string CPU架构类型
+--- Function: Get compiled program architecture type
+---@param arch_type string CPU architecture type
 function getGoArch(arch_type)
     local arch
     if #arch_type == 0 then
         local handle = io.popen("uname -m")
-        arch = handle:read("*a"):gsub("%s+", "") -- 去除多余的空格
+        arch = handle:read("*a"):gsub("%s+", "") -- Remove extra spaces
         handle:close()
     else
         arch = arch_type
@@ -334,7 +334,7 @@ function getGoArch(arch_type)
     end
 end
 
---- 功能： 查看服务运行状态信息
+--- Function: View service running status info
 function api_service_status()
     local status = {}
     local process_exists = trim(sys.exec(init_script.." status"))
@@ -361,12 +361,12 @@ function api_service_status()
     status.yacd_url = uci:get(service_name, "config", "yacd_url")
     status.last_log = get_last_log()
 
-    -- 返回 JSON 格式的状态信息
+    -- Return status info in JSON format
     http.prepare_content("application/json")
     http.write_json(status)
 end
 
---- 功能： 加载编辑器状态信息
+--- Function: Load editor status info
 function api_load_editor_status()
     local status = {}
 
@@ -377,13 +377,13 @@ function api_load_editor_status()
     http.write_json(status)
 end
 
---- 备份配置文件(方便快速恢复)
+--- Backup config file (easy quick restore)
 function api_backup_config()
     local backup_dir="/etc/openproxy"
 
-    -- 备份环境配置文件
+    -- Backup environment config file
     sys.call("cp /etc/config/openproxy "..backup_dir)
-    local backup_cmd = ""     -- 使用 -r 选项以递归方式复制目录
+    local backup_cmd = ""     -- Use -r option to copy directory recursively
     local reader = ltn12_popen("tar -C " .. backup_dir .. " -cz . 2>/dev/null")
 
     http.header('Content-Disposition', 'attachment; filename="Backup-' .. service_name .. '-%s-%s-%s.tar.gz"' %
@@ -393,7 +393,7 @@ function api_backup_config()
     luci.ltn12.pump.all(reader, http.write)
 end
 
---- 功能： 获取mihomo日志内容
+--- Function: Get mihomo log content
 function api_get_logs()
     local logs = ""
     if fs.access(mihomo_log) then
@@ -409,7 +409,7 @@ function api_get_logs()
     })
 end
 
---- 功能： 清空mihomo日志
+--- Function: Clear mihomo logs
 function api_clear_logs()
     if fs.access(mihomo_log) then
         fs.writefile(mihomo_log, "")

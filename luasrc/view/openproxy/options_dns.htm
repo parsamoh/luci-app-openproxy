@@ -1,63 +1,66 @@
-<%+cbi/valueheader%>
-<div class="item-container">
-    <label class="cbi-field-title"><%:Custom DNS Config%></label>
-    <div class="cbi-value">
-        <label class="cbi-value-title">
-            <%:Use Custom DNS:%>
+<%+cbi /valueheader%>
+    <div class="item-container">
+        <label class="cbi-field-title">
+            <%:Custom DNS Config%>
         </label>
-        <div class="cbi-value-field">
-            <input type="checkbox" id="enable_custom_dns">
+        <div class="cbi-value">
+            <label class="cbi-value-title">
+                <%:Use Custom DNS:%>
+            </label>
+            <div class="cbi-value-field">
+                <input type="checkbox" id="enable_custom_dns">
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">
+                <%:Dns Port:%>
+            </label>
+            <div class="cbi-value-field">
+                <input type="text" id="dns_port" placeholder="53">
+            </div>
+        </div>
+        <div class="button-container">
+            <input type="button" class="btn cbi-button cbi-button-reload" onclick="apply_dns_config();"
+                value="<%:Apply%>" />
         </div>
     </div>
-    <div class="cbi-value">
-        <label class="cbi-value-title">
-            <%:Dns Port:%>
-        </label>
-        <div class="cbi-value-field">
-            <input type="text" id="dns_port" placeholder="53">
-        </div>
-    </div>
-    <div class="button-container">
-        <input type="button" class="btn cbi-button cbi-button-reload" onclick="apply_dns_config();" value="<%:Apply%>" />
-    </div>
-</div>
-<%+cbi/valuefooter%>
-<style>
-    #dns_port{
-        width: 5rem;
-        min-width: 4rem;
-    }
-</style>
-<script type="text/javascript">
-    // 获取DNS配置参数
-    function get_dns_config() {
-        fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "dns_config")%>')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("enable_custom_dns").checked = data["enable_custom_dns"] == '1';
-                document.getElementById("dns_port").value = data["dns_port"] || '';
-            })
-            .catch(error => console.error('Error fetching DNS config:', error));
-    }
-    function apply_dns_config() {
-        // 更新 dns 配置信息
-        fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "dns_apply")%>', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                "enable_custom_dns": document.getElementById("enable_custom_dns").checked ? '1' : '0',
-                "dns_port": document.getElementById("dns_port").value,
-            })
-        }).then(response => response.json()).then(data => {
-            document.getElementById("_service_tips").innerHTML = '<b style="color:white">' + data["message"] + '</b>';
-        }).catch(error => {
-            console.error('Error:', error);
-        })
-    }
-    window.onload = function () {
-        get_dns_config();
-    };
+    <%+cbi /valuefooter%>
+        <style>
+            #dns_port {
+                width: 5rem;
+                min-width: 4rem;
+            }
+        </style>
+        <script type="text/javascript">
+            // Get DNS config parameters
+            function get_dns_config() {
+                fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "dns_config")%>')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("enable_custom_dns").checked = data["enable_custom_dns"] == '1';
+                        document.getElementById("dns_port").value = data["dns_port"] || '';
+                    })
+                    .catch(error => console.error('Error fetching DNS config:', error));
+            }
+            function apply_dns_config() {
+                // Update dns configuration info
+                fetch('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "dns_apply")%>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        "enable_custom_dns": document.getElementById("enable_custom_dns").checked ? '1' : '0',
+                        "dns_port": document.getElementById("dns_port").value,
+                    })
+                }).then(response => response.json()).then(data => {
+                    document.getElementById("_service_tips").innerHTML = '<b style="color:white">' + data["message"] + '</b>';
+                }).catch(error => {
+                    console.error('Error:', error);
+                })
+            }
+            window.onload = function () {
+                get_dns_config();
+            };
 
-</script>
+        </script>

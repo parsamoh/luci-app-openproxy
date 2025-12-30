@@ -1,5 +1,5 @@
 sniffer:
-  # 嗅探域名 可选配置
+  # Sniffer domain settings (Optional)
   enable: true
   force-dns-mapping: true
   parse-pure-ip: true

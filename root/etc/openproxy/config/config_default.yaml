@@ -1,16 +1,16 @@
 port: 7881
-socks-port: 1080 # SOCKS5代理端口，DNS请求会中转
-redir-port: 3333 # 透明代理端口
-tproxy-port: 3330 # TPROXY使用的透明代理端口 支持TCP和UDP
+socks-port: 1080 # SOCKS5 proxy port, DNS requests will be forwarded
+redir-port: 3333 # Transparent proxy port
+tproxy-port: 3330 # Transparent proxy port used by TPROXY, supports TCP and UDP
 mode: rule
 allow-lan: true
-routing-mark: 0xff  # TPROXY使用，标记处理过的数据包
-# allow-lan=true时,最好设置内网访问IP,关闭IPv6监听
+routing-mark: 0xff  # Used by TPROXY, marking processed packets
+# When allow-lan=true, it is best to set the intranet access IP and close IPv6 listening
 # '*': bind all IP addresses
 # 192.168.122.11: bind a single IPv4 address
 # "[aaaa::a8aa:ff:fe09:57d8]": bind a single IPv6 addres
 bind-address: '*'
-# 不使用IPv6地址(配合上面的bind-address)
+# Do not use IPv6 address (cooperate with bind-address above)
 ipv6: false
 external-controller: 192.168.50.1:9090
 external-ui: ./dashboard
@@ -35,7 +35,7 @@ dns:
 profile:
   store-selected: true
 
-# 保留的proxy节点列表(启动配置文件不包含任何节点信息,节点信息通过 proxy-provider 提供)
+# Reserved proxy node list (startup configuration file does not contain any node information, node information is provided by proxy-provider)
 proxies: []
 
 proxy-providers:
@@ -57,7 +57,7 @@ proxy-providers:
       interval: 300
 
 proxy-groups:
-  - name: Auto组
+  - name: Auto Group
     type: url-test
     proxies:
     use:
@@ -67,14 +67,14 @@ proxy-groups:
     interval: 600
     tolerance: 150
 
-  - name: 订阅组
+  - name: Subscription Group
     type: select
     use:
       - proxy-provider-http001
     url: http://cp.cloudflare.com/generate_204
     interval: 600
     tolerance: 150
-  - name: 个人组
+  - name: Personal Group
     type: select
     url: http://cp.cloudflare.com/generate_204
     interval: 600
@@ -82,23 +82,23 @@ proxy-groups:
     use:
       - proxy-provider-diy
 
-  - name: ⭐默认节点组⭐
+  - name: ⭐Default Node Group⭐
     type: select
     proxies:
-      - Auto组
-      - 订阅组
-      - 个人组
+      - Auto Group
+      - Subscription Group
+      - Personal Group
       - DIRECT
 
   - name: Domestic
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: Others
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - Domestic
       - DIRECT
 
@@ -106,32 +106,32 @@ proxy-groups:
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: ChatGPT
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: Apple
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: AppleTV
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: GoogleFCM
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: Scholar
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: Bilibili
     type: select
     proxies:
@@ -192,57 +192,57 @@ proxy-groups:
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: AdBlock
     type: select
     proxies:
       - REJECT
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: AsianTV
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
   - name: GlobalTV
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: Speedtest
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: Telegram
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: Crypto
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: Discord
     type: select
     proxies:
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
       - DIRECT
   - name: PayPal
     type: select
     proxies:
       - DIRECT
-      - ⭐默认节点组⭐
+      - ⭐Default Node Group⭐
 rule-providers:
   LocalApps:
     type: file
-    behavior: classical # domain, ipcidr or classical (仅限 Clash Premium 内核)
+    behavior: classical # domain, ipcidr or classical (Clash Premium core only)
     path: ./ruleset/my_local_apps.yaml
     interval: 86400
   MyBlacklist:
     type: file
-    behavior: classical # domain, ipcidr or classical (仅限 Clash Premium 内核)
+    behavior: classical # domain, ipcidr or classical (Clash Premium core only)
     path: ./ruleset/my_blacklist.yaml
     interval: 86400
   MyWhitelist:
@@ -613,7 +613,7 @@ rules:
   - IP-CIDR6,fe80::/10,DIRECT
   - RULE-SET,LocalApps,DIRECT
   - RULE-SET,MyWhitelist,DIRECT
-  - RULE-SET,MyBlacklist,⭐默认节点组⭐
+  - RULE-SET,MyBlacklist,⭐Default Node Group⭐
   - RULE-SET,MiHoYo,DIRECT
   - RULE-SET,Reject,AdBlock
   - RULE-SET,Netflix,Netflix
@@ -673,5 +673,5 @@ rules:
   - RULE-SET,DirectDomain,Domestic
   - RULE-SET,Domestic,Domestic
   - RULE-SET,DomesticIPs,Domestic
-  - RULE-SET,PROXY,⭐默认节点组⭐
+  - RULE-SET,PROXY,⭐Default Node Group⭐
   - MATCH,Others

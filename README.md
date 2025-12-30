@@ -9,7 +9,7 @@ A Clash proxy plugin developed for the OpenWRT SNAPSHOT system. For the Chinese 
 
 | Latest Version  | Build Status    | Chat   |
 | :-------------- | :-------------  | :------|
-| [![Version](https://img.shields.io/github/v/tag/vxiaov/luci-app-openproxy?label=version)](https://github.com/vxiaov/luci-app-openproxy/releases/latest)| [![Build ipk/apk](https://github.com/vxiaov/luci-app-openproxy/actions/workflows/build_new_package.yml/badge.svg)](https://github.com/vxiaov/luci-app-openproxy/actions/workflows/build_new_package.yml) | [![Telegram 群组](https://img.shields.io/badge/加入-Telegram%20群组-red)](https://t.me/share_proxy_001/30302) |
+| [![Version](https://img.shields.io/github/v/tag/vxiaov/luci-app-openproxy?label=version)](https://github.com/vxiaov/luci-app-openproxy/releases/latest)| [![Build ipk/apk](https://github.com/vxiaov/luci-app-openproxy/actions/workflows/build_new_package.yml/badge.svg)](https://github.com/vxiaov/luci-app-openproxy/actions/workflows/build_new_package.yml) | [![Telegram Group](https://img.shields.io/badge/Join-Telegram%20Group-red)](https://t.me/share_proxy_001/30302) |
 
 
 

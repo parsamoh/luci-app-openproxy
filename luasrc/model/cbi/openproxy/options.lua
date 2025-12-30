@@ -13,9 +13,9 @@ local function is_yaml(file)
     return string.match(file, "%.yaml$") or string.match(file, "%.yml$")
 end
 
---- 功能：验证文件类型是否符合要求
----@param file string 文件名
----@param file_type string 文件类型
+--- Function: Verify if file type meets requirements
+---@param file string File name
+---@param file_type string File type
 local function is_valid_file_type(file, file_type)
 	local lower_file = string.lower(file)
     local allowed_extensions = {
@@ -26,9 +26,9 @@ local function is_valid_file_type(file, file_type)
         ["country.mmdb"] = {".mmdb"},
         ["backup-file"] = {".tar.gz"}
     }
-    -- 获取当前选择的扩展名列表
+    -- Get current selected extension list
     local extensions = allowed_extensions[file_type] or {}
-    -- 检查文件名是否以允许的扩展名结尾
+    -- Check if filename ends with allowed extension
     for _, ext in ipairs(extensions) do
         if string.match(lower_file, "%" .. string.lower(ext) .. "$") then
             return true
@@ -53,7 +53,7 @@ local save_dir
 http.setfilehandler(
 	function(meta, chunk, eof)
 		local ftype = http.formvalue("file_type")
-		-- 目录创建并打开文件
+		-- Create directory and open file
 		if not fd then
 			if ftype == "config" then
 				save_dir = config_dir
@@ -68,7 +68,7 @@ http.setfilehandler(
 			elseif ftype == "country.mmdb" then
 				save_dir = home_dir
 			end
-			-- 文件后缀验证，避免前端失效导致上传错误的文件类型
+			-- File suffix validation, avoid invalid file types due to frontend failure
 			if not is_valid_file_type(meta.file, ftype) then
 				um.value = translate("invalid file type") .. meta.file
 				return
@@ -82,9 +82,9 @@ http.setfilehandler(
 				return
 			end
 		end
-		-- 写入数据
+		-- Write data
 		if chunk and fd then  fd:write(chunk) end
-		-- 写完数据后的处理
+		-- Processing after writing data
 		if eof and fd then
 			fd:close()
 			fd = nil
@@ -100,9 +100,9 @@ http.setfilehandler(
 				os.execute("chmod +x ".. home_dir .. "core/* >/dev/null 2>&1")
 				fs.unlink((core_dir .. meta.file))
 			elseif ftype == "backup-file" then
-				-- 上传备份文件-快速恢复配置
+				-- Upload backup file - Quick restore config
 				os.execute("tar -C ".. home_dir .. " -xzf ".. backup_dir .. meta.file .. " >/dev/null 2>&1")
-				os.execute("mv " .. home_dir .. "openproxy /etc/config/") -- 恢复配置变量
+				os.execute("mv " .. home_dir .. "openproxy /etc/config/") -- Restore config variable
 				fs.unlink(home_dir .. "openproxy")
 				fs.unlink(backup_dir .. meta.file)
 				um.value = translate("Backup File Restore Successful!")
@@ -118,7 +118,7 @@ if http.formvalue("upload") then
     end
 end
 
---- DNS 配置
+--- DNS Config
 fdns = Form("dns_config", translate("Dns Config"), nil)
 fdns.reset = false
 fdns.submit = false

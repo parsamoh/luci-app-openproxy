@@ -1,6 +1,6 @@
 proxies:
   #######################################################
-  # Yaml格式: 私人代理节点配置（保存个人搭建的代理节点）
+  # Yaml Format: Private Proxy Provider (Save your own private proxies)
   #######################################################
   - name: myvps
     type: ss

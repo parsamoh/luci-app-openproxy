@@ -1,12 +1,12 @@
 port: 7889
-socks-port: 1080 # SOCKS5代理端口，DNS请求会中转
-redir-port: 3333 # 透明代理端口
-tproxy-port: 3330 # TPROXY使用的透明代理端口 支持TCP和UDP
+socks-port: 1080 # SOCKS5 proxy port, DNS requests will be forwarded
+redir-port: 3333 # Transparent proxy port
+tproxy-port: 3330 # Transparent proxy port used by TPROXY, supports TCP and UDP
 mode: rule
 allow-lan: true
-routing-mark: 0xff # TPROXY使用，标记处理过的数据包
+routing-mark: 0xff # Used by TPROXY, marking processed packets
 bind-address: '*'
-# 不使用IPv6地址(配合上面的bind-address)
+# Do not use IPv6 address (cooperate with bind-address above)
 ipv6: false
 external-controller: 192.168.50.1:9090
 external-ui: /etc/openproxy/ui
@@ -30,7 +30,7 @@ dns:
     - +.*
 profile:
   store-selected: true
-# 嗅探域名(用于域名规则匹配:如果不开启则只能通过IP规则匹配了)
+# Sniffing domain (used for domain rule matching: if not enabled, can only match by IP rules)
 sniffer:
   enable: true
   force-dns-mapping: true
@@ -63,7 +63,7 @@ sniffer:
   #   - 192.168.0.3/32
   skip-dst-address:
     - 192.168.0.0/16
-# 保留的proxy节点列表(启动配置文件不包含任何节点信息,节点信息通过 proxy-provider 提供)
+# Reserved proxy node list (startup configuration file does not contain any node information, node information is provided by proxy-provider)
 proxies: []
 proxy-providers:
   proxy-provider-http001:
@@ -96,7 +96,7 @@ proxy-providers:
       url: http://www.gstatic.com/generate_204
       interval: 300
 proxy-groups:
-  - name: 🎲Auto订阅组
+  - name: 🎲Auto Subscription Group
     type: url-test
     proxies:
     use:
@@ -104,61 +104,61 @@ proxy-groups:
     url: http://cp.cloudflare.com/generate_204
     interval: 600
     tolerance: 150
-  - name: 🚀订阅组01
+  - name: 🚀Subscription Group 01
     type: select
     use:
       - proxy-provider-http001
     url: http://cp.cloudflare.com/generate_204
     interval: 600
     tolerance: 150
-  - name: 🚀订阅组02
+  - name: 🚀Subscription Group 02
     type: select
     use:
       - proxy-provider-http002
     url: http://cp.cloudflare.com/generate_204
     interval: 600
     tolerance: 150
-  - name: 👤个人节点组
+  - name: 👤Personal Node Group
     type: select
     url: http://cp.cloudflare.com/generate_204
     interval: 600
     tolerance: 150
     use:
       - proxy-provider-diy
-  - name: 🌐select组
+  - name: 🌐Select Group
     type: select
     proxies:
-      - 🎲Auto订阅组
-      - 🚀订阅组01
-      - 🚀订阅组02
-      - 👤个人节点组
+      - 🎲Auto Subscription Group
+      - 🚀Subscription Group 01
+      - 🚀Subscription Group 02
+      - 👤Personal Node Group
       - DIRECT
-  - name: 🚩直连默认组
+  - name: 🚩Direct Default Group
     type: select
     proxies:
       - DIRECT
-      - 🌐select组
-  - name: 🛡️代理默认组
+      - 🌐Select Group
+  - name: 🛡️Proxy Default Group
     type: select
     proxies:
-      - 🌐select组
+      - 🌐Select Group
       - DIRECT
-  - name: ❌拒绝默认组
+  - name: ❌Reject Default Group
     type: select
     proxies:
       - REJECT
       - DIRECT
-      - 🌐select组
-  - name: 🛟其他默认
+      - 🌐Select Group
+  - name: 🛟Other Default
     type: select
     proxies:
-      - 🌐select组
+      - 🌐Select Group
       - DIRECT
-      - ❌拒绝默认组
+      - ❌Reject Default Group
 rule-providers:
   MyBlacklist:
     type: file
-    behavior: classical # domain, ipcidr or classical (仅限 Clash Premium 内核)
+    behavior: classical # domain, ipcidr or classical (Clash Premium core only)
     url: https://raw.githubusercontent.com/vxiaov/vClash/ksmerlin386/clash/clash/ruleset/my_blacklist.yaml
     path: ./ruleset/my_blacklist.yaml
     interval: 86400
@@ -524,61 +524,61 @@ rule-providers:
     interval: 86400
 rules:
   - RULE-SET,MyWhitelist,DIRECT
-  - RULE-SET,MyBlacklist,🛡️代理默认组
-  - RULE-SET,Reject,❌拒绝默认组
-  - RULE-SET,Netflix,🛡️代理默认组
-  - RULE-SET,Spotify,🛡️代理默认组
-  - RULE-SET,YouTube,🛡️代理默认组
-  - RULE-SET,DisneyPlus,🛡️代理默认组
-  - RULE-SET,ABC,🛡️代理默认组
-  - RULE-SET,AbemaTV,🛡️代理默认组
-  - RULE-SET,Amazon,🛡️代理默认组
-  - RULE-SET,Bahamut,🛡️代理默认组
-  - RULE-SET,BBCiPlayer,🛡️代理默认组
-  - RULE-SET,DAZN,🛡️代理默认组
-  - RULE-SET,DiscoveryPlus,🛡️代理默认组
-  - RULE-SET,encoreTVB,🛡️代理默认组
-  - RULE-SET,F1TV,🛡️代理默认组
-  - RULE-SET,FoxNow,🛡️代理默认组
-  - RULE-SET,Fox+,🛡️代理默认组
-  - RULE-SET,HBOGo,🛡️代理默认组
-  - RULE-SET,HBOMax,🛡️代理默认组
-  - RULE-SET,HuluJapan,🛡️代理默认组
-  - RULE-SET,Hulu,🛡️代理默认组
-  - RULE-SET,Japonx,🛡️代理默认组
-  - RULE-SET,JOOX,🛡️代理默认组
-  - RULE-SET,KKBOX,🛡️代理默认组
-  - RULE-SET,KKTV,🛡️代理默认组
-  - RULE-SET,LineTV,🛡️代理默认组
-  - RULE-SET,myTVSUPER,🛡️代理默认组
-  - RULE-SET,Niconico,🛡️代理默认组
-  - RULE-SET,Pandora,🛡️代理默认组
-  - RULE-SET,PBS,🛡️代理默认组
-  - RULE-SET,Pornhub,🛡️代理默认组
-  - RULE-SET,Soundcloud,🛡️代理默认组
-  - RULE-SET,ViuTV,🛡️代理默认组
-  - RULE-SET,Telegram,🛡️代理默认组
-  - RULE-SET,Crypto,🛡️代理默认组
-  - RULE-SET,Discord,🛡️代理默认组
-  - RULE-SET,Steam,🛡️代理默认组
-  - RULE-SET,Speedtest,🛡️代理默认组
-  - RULE-SET,PayPal,🛡️代理默认组
-  - RULE-SET,Microsoft,🛡️代理默认组
-  - RULE-SET,ChatGPT,🛡️代理默认组
-  - RULE-SET,AppleMusic,🛡️代理默认组
-  - RULE-SET,AppleNews,🛡️代理默认组
-  - RULE-SET,AppleTV,🛡️代理默认组
-  - RULE-SET,Apple,🛡️代理默认组
-  - RULE-SET,PROXY,🛡️代理默认组
-  - RULE-SET,IQ,🚩直连默认组
-  - RULE-SET,IQIYI,🚩直连默认组
-  - RULE-SET,Letv,🚩直连默认组
-  - RULE-SET,NeteaseMusic,🚩直连默认组
-  - RULE-SET,TencentVideo,🚩直连默认组
-  - RULE-SET,Youku,🚩直连默认组
-  - RULE-SET,WeTV,🚩直连默认组
-  - GEOIP,cn,🚩直连默认组
-  - RULE-SET,DirectDomain,🚩直连默认组
-  - RULE-SET,Domestic,🚩直连默认组
-  - RULE-SET,DomesticIPs,🚩直连默认组
-  - MATCH,🛟其他默认
+  - RULE-SET,MyBlacklist,🛡️Proxy Default Group
+  - RULE-SET,Reject,❌Reject Default Group
+  - RULE-SET,Netflix,🛡️Proxy Default Group
+  - RULE-SET,Spotify,🛡️Proxy Default Group
+  - RULE-SET,YouTube,🛡️Proxy Default Group
+  - RULE-SET,DisneyPlus,🛡️Proxy Default Group
+  - RULE-SET,ABC,🛡️Proxy Default Group
+  - RULE-SET,AbemaTV,🛡️Proxy Default Group
+  - RULE-SET,Amazon,🛡️Proxy Default Group
+  - RULE-SET,Bahamut,🛡️Proxy Default Group
+  - RULE-SET,BBCiPlayer,🛡️Proxy Default Group
+  - RULE-SET,DAZN,🛡️Proxy Default Group
+  - RULE-SET,DiscoveryPlus,🛡️Proxy Default Group
+  - RULE-SET,encoreTVB,🛡️Proxy Default Group
+  - RULE-SET,F1TV,🛡️Proxy Default Group
+  - RULE-SET,FoxNow,🛡️Proxy Default Group
+  - RULE-SET,Fox+,🛡️Proxy Default Group
+  - RULE-SET,HBOGo,🛡️Proxy Default Group
+  - RULE-SET,HBOMax,🛡️Proxy Default Group
+  - RULE-SET,HuluJapan,🛡️Proxy Default Group
+  - RULE-SET,Hulu,🛡️Proxy Default Group
+  - RULE-SET,Japonx,🛡️Proxy Default Group
+  - RULE-SET,JOOX,🛡️Proxy Default Group
+  - RULE-SET,KKBOX,🛡️Proxy Default Group
+  - RULE-SET,KKTV,🛡️Proxy Default Group
+  - RULE-SET,LineTV,🛡️Proxy Default Group
+  - RULE-SET,myTVSUPER,🛡️Proxy Default Group
+  - RULE-SET,Niconico,🛡️Proxy Default Group
+  - RULE-SET,Pandora,🛡️Proxy Default Group
+  - RULE-SET,PBS,🛡️Proxy Default Group
+  - RULE-SET,Pornhub,🛡️Proxy Default Group
+  - RULE-SET,Soundcloud,🛡️Proxy Default Group
+  - RULE-SET,ViuTV,🛡️Proxy Default Group
+  - RULE-SET,Telegram,🛡️Proxy Default Group
+  - RULE-SET,Crypto,🛡️Proxy Default Group
+  - RULE-SET,Discord,🛡️Proxy Default Group
+  - RULE-SET,Steam,🛡️Proxy Default Group
+  - RULE-SET,Speedtest,🛡️Proxy Default Group
+  - RULE-SET,PayPal,🛡️Proxy Default Group
+  - RULE-SET,Microsoft,🛡️Proxy Default Group
+  - RULE-SET,ChatGPT,🛡️Proxy Default Group
+  - RULE-SET,AppleMusic,🛡️Proxy Default Group
+  - RULE-SET,AppleNews,🛡️Proxy Default Group
+  - RULE-SET,AppleTV,🛡️Proxy Default Group
+  - RULE-SET,Apple,🛡️Proxy Default Group
+  - RULE-SET,PROXY,🛡️Proxy Default Group
+  - RULE-SET,IQ,🚩Direct Default Group
+  - RULE-SET,IQIYI,🚩Direct Default Group
+  - RULE-SET,Letv,🚩Direct Default Group
+  - RULE-SET,NeteaseMusic,🚩Direct Default Group
+  - RULE-SET,TencentVideo,🚩Direct Default Group
+  - RULE-SET,Youku,🚩Direct Default Group
+  - RULE-SET,WeTV,🚩Direct Default Group
+  - GEOIP,cn,🚩Direct Default Group
+  - RULE-SET,DirectDomain,🚩Direct Default Group
+  - RULE-SET,Domestic,🚩Direct Default Group
+  - RULE-SET,DomesticIPs,🚩Direct Default Group
+  - MATCH,🛟Other Default

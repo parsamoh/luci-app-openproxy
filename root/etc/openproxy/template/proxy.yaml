@@ -1,6 +1,6 @@
 proxy-providers:
   ####################################################
-  # ！！！！ 代理规则配置参考示例，请不要修改此配置。！！！
+  # !!!! Proxy Rule Config Example. DO NOT MODIFY !!!
   ####################################################
   provider1:
     type: http
@@ -37,9 +37,9 @@ proxy-providers:
       additional-prefix: "provider1 prefix |"
       additional-suffix: "| provider1 suffix"
       proxy-name:
-      - pattern: "IPLC-(.*?)倍"
-        target: "iplc x $1"
-    filter: "(?i)港|hk|hongkong|hong kong"
+      # - pattern: "IPLC-(.*?)x"
+      #   target: "iplc x $1"
+    filter: "(?i)HK|hongkong|hong kong"
     exclude-filter: "xxx"
     exclude-type: "ss|http"
 
