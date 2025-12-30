@@ -79,6 +79,19 @@
                     </select>
                 </div>
             </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Region%>:
+                </label>
+                <div class="cbi-value-field">
+                    <select name="region" id="region_select">
+                        <option value="china">China</option>
+                        <option value="iran">Iran</option>
+                        <option value="russia">Russia</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+            </div>
             <br />
             <div class="cbi-value">
                 <input id="btn_apply" type="button" class="btn cbi-button cbi-button-reload" value="<%:Apply%>" />
@@ -184,7 +197,8 @@
                     "core": document.getElementById("core_select").value,
                     "mode": 'NAT+TPROXY',
                     "config_path": document.getElementById("config_path_select").value,
-                    "dashboard_type": document.getElementById("dashboard_select").value
+                    "dashboard_type": document.getElementById("dashboard_select").value,
+                    "region": document.getElementById("region_select").value
                 })
             }).then(response => response.json()).then(data => {
                 document.getElementById("_service_tips").innerHTML = '<b style="color:white">' + data["message"] + '</b>';
@@ -212,6 +226,7 @@
                 document.getElementById("core_select").value = data["core"];
                 document.getElementById("config_path_select").value = data["config_path"];
                 document.getElementById("dashboard_select").value = data["dashboard_type"] || "yacd";
+                document.getElementById("region_select").value = data["region"] || "china";
             })
         }
         function get_service_status() {

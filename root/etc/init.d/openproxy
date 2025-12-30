@@ -57,14 +57,83 @@ configure_nftables() {
         fi
     fi
 
-    LOGGER "Add nftable nftset collection"
-    nft -f ${WORK_PATH}/rules_nft/nftset_all_cn_ips.nft
+    # Load region-specific IP sets based on user selection
+    region=$(uci -q get openproxy.config.region)
+    [[ -z "$region" ]] && region="china" # Default to china if not set
+    
+    LOGGER "Selected region for IP filtering: $region"
+    
+    # Load appropriate IP set file
+    case "$region" in
+        china)
+            LOGGER "Loading Chinese IP sets"
+            nft -f ${WORK_PATH}/rules_nft/nftset_all_cn_ips.nft
+            REGION_IPV4_SET="cnipv4"
+            REGION_IPV6_SET="cnipv6"
+            ;;
+        iran)
+            LOGGER "Loading Iranian IP sets"
+            nft -f ${WORK_PATH}/rules_nft/nftset_iran_ips.nft
+            REGION_IPV4_SET="iranipv4"
+            REGION_IPV6_SET="iranipv6"
+            ;;
+        russia)
+            LOGGER "Loading Russian IP sets"
+            nft -f ${WORK_PATH}/rules_nft/nftset_russia_ips.nft
+            REGION_IPV4_SET="ruipv4"
+            REGION_IPV6_SET="ruipv6"
+            ;;
+        none)
+            LOGGER "No region-specific IP filtering (all traffic will be proxied except local)"
+            # Create minimal IP sets with only local IPs
+            cat > /tmp/nftset_none.nft <<EOF
+#!/usr/sbin/nft -f
+table inet oproxy_tproxy {
+    set local_ipv4 {
+        type ipv4_addr ;
+        flags interval ;
+        elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 192.168.0.0/16, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0-255.255.255.255 }
+    }
+    set local_ipv6 {
+        type ipv6_addr ;
+        flags interval ;
+        elements = { ::/128, ::1/128, fc00::/7, fe80::/10, ff00::/8, ::ffff:0:0/96, ::ffff:0:0:0/96, 64:ff9b::/96, 100::/64, 2001::/32, 2001:20::/28, 2001:db8::/32, 2002::/16 }
+    }
+    set all_ipv6 {
+        type ipv6_addr ;
+        flags interval ;
+        elements = { ::/0 }
+    }
+}
+EOF
+            nft -f /tmp/nftset_none.nft
+            REGION_IPV4_SET=""
+            REGION_IPV6_SET=""
+            ;;
+        *)
+            LOGGER "Unknown region: $region, defaulting to china"
+            nft -f ${WORK_PATH}/rules_nft/nftset_all_cn_ips.nft
+            REGION_IPV4_SET="cnipv4"
+            REGION_IPV6_SET="cnipv6"
+            ;;
+    esac
+    
     LOGGER "Add nftable TPROXY rules"
     enable_trans_ipv6=$(uci -q get openproxy.config.trans_ipv6)
     if [ "$enable_trans_ipv6" == "1" ] ; then
         nft -f ${WORK_PATH}/rules_nft/openproxy_tproxy_trans_ipv6.nft
     else
         nft -f ${WORK_PATH}/rules_nft/openproxy_tproxy.nft
+    fi
+    
+    # Inject region-specific bypass rules if a region is selected
+    if [ -n "$REGION_IPV4_SET" ]; then
+        LOGGER "Injecting region-specific IP bypass rules for $region"
+        # Insert rules after local IP checks (position 4 for prerouting, similar for output)
+        nft insert rule inet oproxy_tproxy prerouting position 4 ip daddr @${REGION_IPV4_SET} return
+        nft insert rule inet oproxy_tproxy prerouting position 5 ip6 daddr @${REGION_IPV6_SET} return
+        nft insert rule inet oproxy_tproxy output position 4 ip daddr @${REGION_IPV4_SET} return
+        nft insert rule inet oproxy_tproxy output position 5 ip6 daddr @${REGION_IPV6_SET} return
     fi
 }
 

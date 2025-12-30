@@ -3,7 +3,8 @@ define ROUTER_MARK=0x01
 define TPROXY_PORT=3330
 define TPROXY_L4PROTO={ tcp, udp }
 
-include "/etc/openproxy/rules_nft/nftset_all_cn_ips.nft"
+# Note: Region-specific IP sets are loaded separately by the init script
+# This file defines the base firewall rules without region-specific IP filtering
 
 table inet oproxy_tproxy {
   chain divert {

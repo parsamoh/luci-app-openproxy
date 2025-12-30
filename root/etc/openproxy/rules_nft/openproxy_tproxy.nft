@@ -3,7 +3,9 @@ define ROUTER_MARK=0x01
 define TPROXY_PORT=3330
 define TPROXY_L4PROTO={ tcp, udp }
 
-include "/etc/openproxy/rules_nft/nftset_all_cn_ips.nft"
+# Note: Region-specific IP sets are loaded separately by the init script
+# This file defines the base firewall rules. Region-specific bypass rules
+# are injected dynamically after this table is created.
 
 table inet oproxy_tproxy {
   chain divert {
@@ -18,8 +20,7 @@ table inet oproxy_tproxy {
     tcp dport 53 return
     ip daddr @local_ipv4 return
     ip6 daddr @local_ipv6 return
-    ip daddr @cnipv4 return
-    ip6 daddr @cnipv6 return
+    # Region-specific IP bypass rules will be inserted here by init script
     udp dport 51820 return
     iifname "wt0" return
     iifname "netbird0" return
@@ -33,8 +34,7 @@ table inet oproxy_tproxy {
     tcp dport 53 return
     ip daddr @local_ipv4 return
     ip6 daddr @local_ipv6 return
-    ip daddr @cnipv4 return
-    ip6 daddr @cnipv6 return
+    # Region-specific IP bypass rules will be inserted here by init script
     udp dport 51820 return
     meta l4proto $TPROXY_L4PROTO meta mark set $ROUTER_MARK accept
   }

@@ -24,6 +24,8 @@ function index()
     page_index = page_index + 1
     entry({"admin", "services", service_name, "options"}, cbi("openproxy/options"), _("Options"), page_index)
     page_index = page_index + 1
+    entry({"admin", "services", service_name, "ipset_manager"}, template("openproxy/ipset_manager"), _("IP Sets"), page_index)
+    page_index = page_index + 1
     entry({"admin", "services", service_name, "help"}, template("openproxy/help"), _("Help"), page_index)
     page_index = page_index + 1
     entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
@@ -42,6 +44,7 @@ function index()
     entry({"admin", "services", service_name, "api", "backup"}, call("api_backup_config")).leaf = true
     entry({"admin", "services", service_name, "api", "get_logs"}, call("api_get_logs")).leaf = true
     entry({"admin", "services", service_name, "api", "clear_logs"}, call("api_clear_logs")).leaf = true
+    entry({"admin", "services", service_name, "api", "update_ipset"}, call("api_update_ipset")).leaf = true
 end
 
 ----------------------------------------------------------------------------------
@@ -221,6 +224,7 @@ function api_service_apply()
     local p_mode = http.formvalue("mode")
     local p_config_path = http.formvalue("config_path")
     local p_dashboard_type = http.formvalue("dashboard_type")
+    local p_region = http.formvalue("region")
     if enable_value == "1" or enable_value == "true" then
         uci:set(service_name, "config", "enable", '1')
     else
@@ -242,6 +246,9 @@ function api_service_apply()
     end
     if p_dashboard_type then
         uci:set(service_name, "config", "dashboard_type", p_dashboard_type)
+    end
+    if p_region then
+        uci:set(service_name, "config", "region", p_region)
     end
     uci:set(service_name, "config", "core", p_core)
     uci:set(service_name, "config", "mode", p_mode or "NAT+TPROXY")
@@ -288,6 +295,7 @@ function api_get_service_config()
     status.mode = uci:get(service_name, "config", "mode")
     status.config_path = uci:get(service_name, "config", "config_path")
     status.dashboard_type = uci:get(service_name, "config", "dashboard_type") or "yacd"
+    status.region = uci:get(service_name, "config", "region") or "china"
 
     -- Return status info in JSON format
     http.prepare_content("application/json")
@@ -419,6 +427,124 @@ function api_clear_logs()
     http.write_json({
         status = 1000,
         message = "Logs cleared successfully"
+    })
+end
+
+--- Function: Update IP set from URL
+function api_update_ipset()
+    local url = http.formvalue("url")
+    local region = http.formvalue("region")
+    
+    if not url or not region then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 400,
+            message = "Missing URL or region parameter"
+        })
+        return
+    end
+    
+    -- Validate region
+    if region ~= "iran" and region ~= "russia" and region ~= "china" then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 400,
+            message = "Invalid region. Must be: iran, russia, or china"
+        })
+        return
+    end
+    
+    local temp_file = "/tmp/iplist_" .. region .. "_download.txt"
+    local output_file = "/etc/openproxy/rules_nft/nftset_" .. (region == "china" and "all_cn" or region) .. "_ips.nft"
+    
+    -- Download the IP list
+    local download_cmd = "wget -q -O " .. temp_file .. " '" .. url .. "' 2>&1"
+    local result = sys.exec(download_cmd)
+    
+    if not fs.access(temp_file) then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            message = "Failed to download IP list from URL"
+        })
+        return
+    end
+    
+    -- Process the downloaded file
+    local ipv4_list = {}
+    local ipv6_list = {}
+    
+    for line in io.lines(temp_file) do
+        line = trim(line)
+        -- Skip empty lines and comments
+        if line ~=  "" and not line:match("^#") and not line:match("^%s*$") then
+            -- Skip private IP ranges
+            if not line:match("^10%.") and not line:match("^172%.1[6-9]%.") and 
+               not line:match("^172%.2[0-9]%.") and not line:match("^172%.3[01]%.") and
+               not line:match("^192%.168%.") and not line:match("^127%.") then
+                -- Check if IPv6 (contains :) or IPv4
+                if line:match(":") then
+                    table.insert(ipv6_list, line)
+                else
+                    table.insert(ipv4_list, line)
+                end
+            end
+        end
+    end
+    
+    -- Generate nftables file
+    local ipv4_set_name = region .. "ipv4"
+    local ipv6_set_name = region .. "ipv6"
+    if region == "china" then
+        ipv4_set_name = "cnipv4"
+        ipv6_set_name = "cnipv6"
+    end
+    
+    local nft_content = "#!/usr/sbin/nft -f\n"
+    nft_content = nft_content .. "# Auto-generated on " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
+    nft_content = nft_content .. "# Source: " .. url .. "\n\n"
+    nft_content = nft_content .. "table inet oproxy_tproxy {\n"
+    nft_content = nft_content .. "    set " .. ipv4_set_name .. " {\n"
+    nft_content = nft_content .. "        type ipv4_addr ;\n"
+    nft_content = nft_content .. "        flags interval ;\n"
+    nft_content = nft_content .. "        elements = { " .. table.concat(ipv4_list, ",") .. " }\n"
+    nft_content = nft_content .. "    }\n"
+    nft_content = nft_content .. "    set " .. ipv6_set_name .. " {\n"
+    nft_content = nft_content .. "        type ipv6_addr ;\n"
+    nft_content = nft_content .. "        flags interval ;\n"
+    nft_content = nft_content .. "        elements = { " .. table.concat(ipv6_list, ",") .. " }\n"
+    nft_content = nft_content .. "    }\n"
+    nft_content = nft_content .. "    set local_ipv4 {\n"
+    nft_content = nft_content .. "        type ipv4_addr ;\n"
+    nft_content = nft_content .. "        flags interval ;\n"
+    nft_content = nft_content .. "        elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 192.168.0.0/16, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0-255.255.255.255 }\n"
+    nft_content = nft_content .. "    }\n\n"
+    nft_content = nft_content .. "    set local_ipv6 {\n"
+    nft_content = nft_content .. "        type ipv6_addr ;\n"
+    nft_content = nft_content .. "        flags interval ;\n"
+    nft_content = nft_content .. "        elements = { ::/128, ::1/128, fc00::/7, fe80::/10, ff00::/8, ::ffff:0:0/96, ::ffff:0:0:0/96, 64:ff9b::/96, 100::/64, 2001::/32, 2001:20::/28, 2001:db8::/32, 2002::/16 }\n"
+    nft_content = nft_content .. "    }\n\n"
+    nft_content = nft_content .. "    set all_ipv6 {\n"
+    nft_content = nft_content .. "        type ipv6_addr ;\n"
+    nft_content = nft_content .. "        flags interval ;\n"
+    nft_content = nft_content .. "        elements = { ::/0 }\n"
+    nft_content = nft_content .. "    }\n\n"
+    nft_content = nft_content .. "}\n"
+    
+    -- Write to output file
+    fs.writefile(output_file, nft_content)
+    
+    -- Clean up temp file
+    fs.unlink(temp_file)
+    
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        message = "IP set updated successfully",
+        ipv4_count = #ipv4_list,
+        ipv6_count = #ipv6_list,
+        region = region,
+        file = output_file
     })
 end
 
