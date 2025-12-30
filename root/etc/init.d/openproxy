@@ -141,7 +141,7 @@ EOF
 cleanup_nftables() {
     # Clean up rules
     LOGGER "2.Clean up nftable TPROXY rules"
-    nft delete table inet oproxy_tproxy
+    nft delete table inet oproxy_tproxy >/dev/null 2>&1
     dns_port=$(uci -q get openproxy.config.dns_port)
     [[ -z "$dns_port" ]] && dns_port="$DNS_PORT"
     if [ "$dns_port" != "53" ] ; then
@@ -149,13 +149,13 @@ cleanup_nftables() {
         if [ ! -z "$(nft list chain inet fw4 dstnat |grep 'OpenProxy DNS Hijack')" ]; then
             handle=$(nft -a list chain inet fw4 dstnat | grep 'OpenProxy DNS Hijack' | awk '{print $NF}')
             if [ ! -z "$handle" ]; then
-                nft delete rule inet fw4 dstnat handle $handle
+                nft delete rule inet fw4 dstnat handle $handle >/dev/null 2>&1
             fi
         fi
     fi
     LOGGER "3.Clean up routing rules"
-    ip rule delete fwmark ${ROUTER_MARK} lookup 100
-    ip -6 rule delete fwmark ${ROUTER_MARK} lookup 100
+    ip rule delete fwmark ${ROUTER_MARK} lookup 100 >/dev/null 2>&1
+    ip -6 rule delete fwmark ${ROUTER_MARK} lookup 100 >/dev/null 2>&1
     LOGGER "4.Reload firewall rules"
     # /etc/init.d/firewall reload 2>/dev/null
 }
@@ -249,6 +249,6 @@ stop_service() {
     LOGGER "Stopping openproxy service"
     LOGGER "1.Clean up nftable rules"
     cleanup_nftables
-    killall ${PROC_BIN}
+    killall ${PROC_BIN} >/dev/null 2>&1
     LOGGER "5.${PROC_BIN} Process has stopped!"
 }
