@@ -88,7 +88,7 @@ cleanup_nftables() {
     ip rule delete fwmark ${ROUTER_MARK} lookup 100
     ip -6 rule delete fwmark ${ROUTER_MARK} lookup 100
     LOGGER "4.重新加载防火墙规则"
-    /etc/init.d/firewall reload 2>/dev/null
+    # /etc/init.d/firewall reload 2>/dev/null
 }
 
 
