@@ -1,4 +1,4 @@
-
+local uci = require("luci.model.uci").cursor()
 m = Map("openproxy", translate("Client Proxy Control"), translate("Manage devices to have their own proxy groups in the dashboard."))
 
 s = m:section(TypedSection, "client", translate("Clients"))
