@@ -579,7 +579,15 @@ function api_check_update()
             message = "Failed to parse GitHub response"
         })
         return
+        return
     end
+
+    -- Sort releases by published_at date descending
+    table.sort(releases, function(a, b)
+        local date_a = a.published_at or ""
+        local date_b = b.published_at or ""
+        return date_a > date_b
+    end)
 
     local current_version = "Unknown"
     local stable_version = nil
