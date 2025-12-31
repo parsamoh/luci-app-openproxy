@@ -151,7 +151,7 @@ jobs:
         cd openwrt_sdk
         make defconfig
         make package/luci-app-openproxy/prepare
-        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) PKG_VERSION="${{ env.PKG_VERSION }}" PKG_RELEASE="${{ env.PKG_RELEASE }}"
+        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
 
     - name: Generate build summary
       if: always()
