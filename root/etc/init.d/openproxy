@@ -218,8 +218,36 @@ check_config_file() {
         config_get name "$config" name
         config_get ip "$config" ip_addr
         
+        # Build proxies list
+        local proxies_json=""
+        append_proxy() {
+             # Handle space-separated values if stored as string, or single items
+             for p in $1; do
+                 if [ -z "$proxies_json" ]; then
+                     proxies_json="\"$p\""
+                 else
+                     proxies_json="$proxies_json, \"$p\""
+                 fi
+             done
+        }
+        # Try as list
+        config_list_foreach "$config" proxies append_proxy
+        # Try as option (space separated) if list was empty but option exists
+        if [ -z "$proxies_json" ]; then
+             local proxies_opt
+             config_get proxies_opt "$config" proxies
+             if [ -n "$proxies_opt" ]; then
+                 append_proxy "$proxies_opt"
+             fi
+        fi
+
+        # Default fallback
+        if [ -z "$proxies_json" ]; then
+            proxies_json="\"⭐Default Node Group⭐\", \"DIRECT\""
+        fi
+        
         if [ "$enable" == "1" ] && [ -n "$name" ] && [ -n "$ip" ]; then
-             CLIENT_EXPR="${CLIENT_EXPR}.[\"proxy-groups\"] += [{\"name\": \"${name}\", \"type\": \"select\", \"proxies\": [\"⭐Default Node Group⭐\", \"DIRECT\"]} ] | .[\"rules\"] = [\"SRC-IP-CIDR,${ip}/32,${name}\"] + .[\"rules\"] |"
+             CLIENT_EXPR="${CLIENT_EXPR}.[\"proxy-groups\"] += [{\"name\": \"${name}\", \"type\": \"select\", \"proxies\": [${proxies_json}]} ] | .[\"rules\"] = [\"SRC-IP-CIDR,${ip}/32,${name}\"] + .[\"rules\"] |"
         fi
     }
     # Load config and iterate
