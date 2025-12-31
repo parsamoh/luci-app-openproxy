@@ -1,0 +1,105 @@
+<%+header%>
+<h2 name="content"><%:Dashboard Management%></h2>
+
+<div class="cbi-map-descr">
+    <%:Manage your OpenProxy dashboards. Install or update them directly from GitHub.%>
+</div>
+
+<div class="cbi-section">
+    <div class="cbi-section-node">
+        
+        <!-- Yacd -->
+        <div class="cbi-value">
+            <label class="cbi-value-title">Yacd</label>
+            <div class="cbi-value-field">
+                <span id="status_yacd"><%:Checking...%></span>
+                <input type="button" class="cbi-button cbi-button-apply" id="btn_yacd" value="<%:Install/Update%>" style="margin-left: 10px;" onclick="installDashboard('yacd')" />
+            </div>
+        </div>
+
+        <!-- Metacubexd -->
+        <div class="cbi-value">
+             <label class="cbi-value-title">Metacubexd</label>
+            <div class="cbi-value-field">
+                <span id="status_metacubexd"><%:Checking...%></span>
+                <input type="button" class="cbi-button cbi-button-apply" id="btn_metacubexd" value="<%:Install/Update%>" style="margin-left: 10px;" onclick="installDashboard('metacubexd')" />
+            </div>
+        </div>
+
+        <!-- Zashboard -->
+        <div class="cbi-value">
+             <label class="cbi-value-title">Zashboard</label>
+            <div class="cbi-value-field">
+                <span id="status_zashboard"><%:Checking...%></span>
+                <input type="button" class="cbi-button cbi-button-apply" id="btn_zashboard" value="<%:Install/Update%>" style="margin-left: 10px;" onclick="installDashboard('zashboard')" />
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="cbi-section" id="log_section" style="display:none">
+    <h3><%:Installation Log%></h3>
+    <textarea id="install_log" class="cbi-input-textarea" style="width: 100%; height: 300px; font-family: monospace;" readonly></textarea>
+</div>
+
+<script type="text/javascript">//<![CDATA[
+    
+    function checkStatus() {
+        XHR.get('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "dashboard_status")%>', null, function(x, data) {
+            if (data && data.status == 1000) {
+                var stats = data.data;
+                updateStatus('yacd', stats.yacd);
+                updateStatus('metacubexd', stats.metacubexd);
+                updateStatus('zashboard', stats.zashboard);
+            }
+        });
+    }
+
+    function updateStatus(name, installed) {
+        var el = document.getElementById('status_' + name);
+        if (installed) {
+            el.innerHTML = '<span style="color:green"><%:Installed%></span>';
+            document.getElementById('btn_' + name).value = '<%:Update%>';
+        } else {
+            el.innerHTML = '<span style="color:red"><%:Not Installed%></span>';
+            document.getElementById('btn_' + name).value = '<%:Install%>';
+        }
+    }
+
+    function installDashboard(name) {
+        if (!confirm('<%:Are you sure you want to install/update %> ' + name + '?')) {
+            return;
+        }
+
+        document.getElementById('log_section').style.display = 'block';
+        var logArea = document.getElementById('install_log');
+        logArea.value = '<%:Starting...%>\n';
+        
+        // Disable buttons
+        var buttons = document.getElementsByClassName('cbi-button');
+        for(var i=0; i<buttons.length; i++) buttons[i].disabled = true;
+
+        XHR.get('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "install_dashboard")%>', { name: name }, function(x, data) {
+            // Re-enable buttons
+            for(var i=0; i<buttons.length; i++) buttons[i].disabled = false;
+
+            if (data && data.log) {
+                logArea.value += data.log;
+                if (data.status == 1000) {
+                     logArea.value += '\n\n<%:Success!%>';
+                     checkStatus(); // Refresh status
+                } else {
+                     logArea.value += '\n\n<%:Failed.%>';
+                }
+            } else {
+                logArea.value += '\n<%:Error executing request.%>';
+            }
+        });
+    }
+
+    // Initial check
+    checkStatus();
+//]]></script>
+
+<%+footer%>

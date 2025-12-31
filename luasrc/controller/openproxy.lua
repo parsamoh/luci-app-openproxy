@@ -34,6 +34,8 @@ function index()
     entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
     page_index = page_index + 1
     entry({"admin", "services", service_name, "update"}, template("openproxy/update"), _("Update"), page_index)
+    page_index = page_index + 1
+    entry({"admin", "services", service_name, "dashboards"}, template("openproxy/dashboards"), _("Dashboards"), page_index)
 
     -- API Interface: Dynamically get file content
     entry({"admin", "services", service_name, "api", "file_content"}, call("api_get_file_content")).leaf = true
@@ -51,7 +53,10 @@ function index()
     entry({"admin", "services", service_name, "api", "clear_logs"}, call("api_clear_logs")).leaf = true
     entry({"admin", "services", service_name, "api", "update_ipset"}, call("api_update_ipset")).leaf = true
     entry({"admin", "services", service_name, "api", "check_update"}, call("api_check_update")).leaf = true
+    entry({"admin", "services", service_name, "api", "check_update"}, call("api_check_update")).leaf = true
     entry({"admin", "services", service_name, "api", "perform_update"}, call("api_perform_update")).leaf = true
+    entry({"admin", "services", service_name, "api", "dashboard_status"}, call("api_get_dashboard_status")).leaf = true
+    entry({"admin", "services", service_name, "api", "install_dashboard"}, call("api_install_dashboard")).leaf = true
 end
 
 ----------------------------------------------------------------------------------
@@ -692,6 +697,129 @@ function api_perform_update()
     
     -- Cleanup
     sys.exec("rm -f " .. temp_file)
+
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        log = log
+    })
+end
+
+--- Function: Get dashboard status
+function api_get_dashboard_status()
+    local dashboards = {
+        { name = "yacd", path = "/etc/openproxy/ui/yacd" },
+        { name = "metacubexd", path = "/etc/openproxy/ui/metacubexd" },
+        { name = "zashboard", path = "/etc/openproxy/ui/zashboard" }
+    }
+    
+    local status = {}
+    for _, db in ipairs(dashboards) do
+        if fs.access(db.path .. "/index.html") then
+            status[db.name] = true
+        else
+            status[db.name] = false
+        end
+    end
+    
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        data = status
+    })
+end
+
+--- Function: Install/Update Dashboard
+function api_install_dashboard()
+    local name = http.formvalue("name")
+    
+    if not name then
+         http.prepare_content("application/json")
+        http.write_json({
+            status = 400,
+            message = "Missing dashboard name"
+        })
+        return
+    end
+
+    local urls = {
+        yacd = "https://github.com/haishanh/yacd/archive/gh-pages.tar.gz",
+        metacubexd = "https://github.com/MetaCubeX/metacubexd/archive/gh-pages.tar.gz",
+        zashboard = "https://github.com/Zephyruso/zashboard/archive/gh-pages.tar.gz"
+    }
+
+    local url = urls[name]
+    if not url then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 400,
+            message = "Unknown dashboard type"
+        })
+        return
+    end
+
+    local temp_file = "/tmp/" .. name .. ".tar.gz"
+    local install_dir = "/etc/openproxy/ui/" .. name
+    local log = "Starting installation for " .. name .. "...\n"
+    
+    -- 1. Download
+    log = log .. "Downloading from " .. url .. "...\n"
+    sys.exec("rm -f " .. temp_file)
+    local download_cmd = "wget -O " .. temp_file .. " --no-check-certificate '" .. url .. "' 2>&1"
+    log = log .. sys.exec(download_cmd)
+
+    if not fs.access(temp_file) then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            log = log .. "\nDownload failed."
+        })
+        return
+    end
+
+    -- 2. Extract
+    log = log .. "\nExtracting...\n"
+    local extract_dir = "/tmp/" .. name .. "_extract"
+    sys.exec("rm -rf " .. extract_dir)
+    sys.exec("mkdir -p " .. extract_dir)
+    
+    local tar_cmd = "tar -xzf " .. temp_file .. " -C " .. extract_dir .. " 2>&1"
+    log = log .. sys.exec(tar_cmd)
+    
+    -- 3. Install (Move)
+    -- Find the directory inside extract_dir (usually name-gh-pages)
+    local subdirs = fs.dir(extract_dir)
+    local source_dir = nil
+    if subdirs then
+        for file in subdirs do
+            if file ~= "." and file ~= ".." then
+                source_dir = extract_dir .. "/" .. file
+                break
+            end
+        end
+    end
+
+    if source_dir then
+        log = log .. "\nInstalling to " .. install_dir .. "...\n"
+        sys.exec("rm -rf " .. install_dir)
+        sys.exec("mkdir -p " .. install_dir)
+        local move_cmd = "cp -r " .. source_dir .. "/* " .. install_dir .. "/ 2>&1"
+        log = log .. sys.exec(move_cmd)
+    else
+        log = log .. "\nFailed to find extracted directory.\n"
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            log = log
+        })
+        return
+    end
+
+    -- Clean up
+    sys.exec("rm -f " .. temp_file)
+    sys.exec("rm -rf " .. extract_dir)
+    
+    log = log .. "\nInstallation Complete!"
 
     http.prepare_content("application/json")
     http.write_json({
