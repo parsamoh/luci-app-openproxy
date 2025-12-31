@@ -208,9 +208,27 @@ check_config_file() {
     proxy_expr='.["proxy-providers"] |= with_entries(select(.value.type == "http") | .value.path |= sub("^.*/", "./providers_proxy/"),select(.value.type == "file") | .value.path |= sub("^.*/", "./custom_proxy/"))|'
     rule_expr='.["rule-providers"] |= with_entries(select(.value.type == "http") | .value.path |= sub("^.*/", "./providers_rule/"),select(.value.type == "file") | .value.path |= sub("^.*/", "./custom_rule/"))|'
     
+    # Inject Client Proxy Groups and Rules
+    CLIENT_EXPR=""
+    # Function to handle each client section
+    handle_client_conf() {
+        local config=$1
+        local enable name ip
+        config_get_bool enable "$config" enable 1
+        config_get name "$config" name
+        config_get ip "$config" ip_addr
+        
+        if [ "$enable" == "1" ] && [ -n "$name" ] && [ -n "$ip" ]; then
+             CLIENT_EXPR="${CLIENT_EXPR}.[\"proxy-groups\"] += [{\"name\": \"${name}\", \"type\": \"select\", \"proxies\": [\"⭐Default Node Group⭐\", \"DIRECT\"]} ] | .[\"rules\"] = [\"SRC-IP-CIDR,${ip}/32,${name}\"] + .[\"rules\"] |"
+        fi
+    }
+    # Load config and iterate
+    config_load openproxy
+    config_foreach handle_client_conf client
+
     # Closing expression, no vertical bar at the end
     ui_expr=".external-controller=strenv(ext_ctl)|.external-ui=strenv(DASHBOARD_UI)|.secret=strenv(tmp_secret)"
-    yq_expr="${port_expr}${ipv6_expr}${tmode_expr}${proxy_expr}${rule_expr}${ui_expr}"
+    yq_expr="${port_expr}${ipv6_expr}${tmode_expr}${proxy_expr}${rule_expr}${CLIENT_EXPR}${ui_expr}"
     config_path="$(uci -q get openproxy.config.config_path)"
     tmp_secret=${YACD_SECRET} DASHBOARD_UI=${DASHBOARD_UI} ext_ctl="${LANIP}:${YACD_PORT}" dns_listen=":${dns_port}" enmode="fake-ip" yq e -P "${yq_expr}" ${config_path} > ${CONFIG_FILE}
 }

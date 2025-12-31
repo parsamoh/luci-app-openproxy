@@ -26,6 +26,8 @@ function index()
     page_index = page_index + 1
     entry({"admin", "services", service_name, "ipset_manager"}, template("openproxy/ipset_manager"), _("IP Sets"), page_index)
     page_index = page_index + 1
+    entry({"admin", "services", service_name, "clients"}, cbi("openproxy/clients"), _("Clients"), page_index)
+    page_index = page_index + 1
     entry({"admin", "services", service_name, "help"}, template("openproxy/help"), _("Help"), page_index)
     page_index = page_index + 1
     entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
