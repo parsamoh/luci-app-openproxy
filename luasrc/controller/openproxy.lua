@@ -579,7 +579,6 @@ function api_check_update()
             message = "Failed to parse GitHub response"
         })
         return
-        return
     end
 
     -- Sort releases by published_at date descending
