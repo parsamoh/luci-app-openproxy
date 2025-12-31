@@ -108,6 +108,22 @@ jobs:
         path: openwrt_sdk/package/luci-app-openproxy
         fetch-depth: 1
     
+    - name: Determine Version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "PKG_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "PKG_RELEASE=1" >> $GITHUB_ENV
+        else
+          # Beta / Snapshot
+          DATE=$(date +'%Y.%m.%d')
+          SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "PKG_VERSION=$DATE-beta-$SHA" >> $GITHUB_ENV
+          echo "PKG_RELEASE=1" >> $GITHUB_ENV
+        fi
+    
     - name: Generate ChangeLog by conventional-changelog
       run: |
         npm install -g conventional-changelog-cli
@@ -135,7 +151,7 @@ jobs:
         cd openwrt_sdk
         make defconfig
         make package/luci-app-openproxy/prepare
-        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1))
+        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) PKG_VERSION="${{ env.PKG_VERSION }}" PKG_RELEASE="${{ env.PKG_RELEASE }}"
 
     - name: Generate build summary
       if: always()

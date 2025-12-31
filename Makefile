@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openproxy
-PKG_VERSION:=$(shell git describe --tags --abbrev=0)
-PKG_RELEASE:=$(shell git rev-list --count HEAD)
+PKG_VERSION?=$(shell git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
+PKG_RELEASE?=$(shell git rev-list --count HEAD 2>/dev/null || echo "1")
 PKG_MAINTAINER:=vxiaov <https://github.com/vxiaov/OpenProxy>
 PKG_LICENSE:=GPL-3.0
 
