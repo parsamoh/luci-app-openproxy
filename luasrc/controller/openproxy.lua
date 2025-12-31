@@ -4,6 +4,7 @@ local uci = require("luci.model.uci").cursor()
 local http = require "luci.http"
 local fs = require "nixio.fs"
 local sys = require "luci.sys"
+local jsonc = require "luci.jsonc"
 
 local config_link = "/etc/openproxy/config.yaml"
 local core_link = "/etc/openproxy/clash"
@@ -31,6 +32,8 @@ function index()
     entry({"admin", "services", service_name, "help"}, template("openproxy/help"), _("Help"), page_index)
     page_index = page_index + 1
     entry({"admin", "services", service_name, "logs"}, template("openproxy/logs"), _("Logs"), page_index)
+    page_index = page_index + 1
+    entry({"admin", "services", service_name, "update"}, template("openproxy/update"), _("Update"), page_index)
 
     -- API Interface: Dynamically get file content
     entry({"admin", "services", service_name, "api", "file_content"}, call("api_get_file_content")).leaf = true
@@ -47,6 +50,8 @@ function index()
     entry({"admin", "services", service_name, "api", "get_logs"}, call("api_get_logs")).leaf = true
     entry({"admin", "services", service_name, "api", "clear_logs"}, call("api_clear_logs")).leaf = true
     entry({"admin", "services", service_name, "api", "update_ipset"}, call("api_update_ipset")).leaf = true
+    entry({"admin", "services", service_name, "api", "check_update"}, call("api_check_update")).leaf = true
+    entry({"admin", "services", service_name, "api", "perform_update"}, call("api_perform_update")).leaf = true
 end
 
 ----------------------------------------------------------------------------------
@@ -547,6 +552,144 @@ function api_update_ipset()
         ipv6_count = #ipv6_list,
         region = region,
         file = output_file
+    })
+end
+
+--- Function: Check for updates
+function api_check_update()
+    local repo_url = "https://api.github.com/repos/parsamoh/luci-app-openproxy/releases"
+    -- Use curl to fetch releases because it's more reliable for HTTPS
+    local cmd = "curl -s -k -H 'User-Agent: luci-app-openproxy' " .. repo_url
+    local content = sys.exec(cmd)
+    
+    if not content or content == "" then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            message = "Failed to fetch releases from GitHub"
+        })
+        return
+    end
+
+    local releases = jsonc.parse(content)
+    if not releases or type(releases) ~= "table" then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            message = "Failed to parse GitHub response"
+        })
+        return
+    end
+
+    local current_version = "Unknown"
+    local stable_version = nil
+    local beta_version = nil
+    local stable_url = nil
+    local beta_url = nil
+
+    -- Get current version
+    if is_opkg_available() then
+        current_version = trim(sys.exec("opkg list-installed luci-app-openproxy | cut -d ' ' -f 3") or "Unknown")
+    elseif is_apk_available() then
+        current_version = trim(sys.exec("apk info -e -v luci-app-openproxy | sed 's/luci-app-openproxy-//'") or "Unknown")
+    end
+
+    -- Determine package extension
+    local pkg_ext = is_apk_available() and ".apk" or ".ipk"
+
+    for _, release in ipairs(releases) do
+        local is_prerelease = release.prerelease
+        local tag_name = release.tag_name
+        local assets = release.assets
+        local download_url = nil
+
+        -- Find compatible asset
+        if assets then
+            for _, asset in ipairs(assets) do
+                if asset.name:match("luci%-app%-openproxy.*%" .. pkg_ext .. "$") then
+                    download_url = asset.browser_download_url
+                    break
+                end
+            end
+        end
+
+        if download_url then
+            if is_prerelease then
+                 if not beta_version then
+                    beta_version = tag_name
+                    beta_url = download_url
+                end
+            else
+                if not stable_version then
+                    stable_version = tag_name
+                    stable_url = download_url
+                end
+            end
+        end
+
+        if stable_version and beta_version then
+            break
+        end
+    end
+
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        current_version = current_version,
+        stable_version = stable_version,
+        stable_url = stable_url,
+        beta_version = beta_version,
+        beta_url = beta_url
+    })
+end
+
+--- Function: Perform update
+function api_perform_update()
+    local url = http.formvalue("url")
+    if not url then
+        http.prepare_content("application/json")
+        http.write_json({
+            status = 400,
+            message = "Missing URL parameter"
+        })
+        return
+    end
+
+    local pkg_ext = is_apk_available() and ".apk" or ".ipk"
+    local temp_file = "/tmp/openproxy_update" .. pkg_ext
+    local log = "Downloading " .. url .. "...\n"
+
+    -- Download
+    sys.exec("rm -f " .. temp_file)
+    local download_cmd = "wget -O " .. temp_file .. " '" .. url .. "' 2>&1"
+    log = log .. sys.exec(download_cmd)
+
+    if not fs.access(temp_file) then
+         http.prepare_content("application/json")
+        http.write_json({
+            status = 500,
+            log = log .. "\nDownload failed."
+        })
+        return
+    end
+
+    log = log .. "\nInstalling...\n"
+    local install_cmd = ""
+    if is_opkg_available() then
+        install_cmd = "opkg install " .. temp_file .. " --force-reinstall 2>&1"
+    elseif is_apk_available() then
+        install_cmd = "apk add --allow-untrusted " .. temp_file .. " 2>&1"
+    end
+
+    log = log .. sys.exec(install_cmd)
+    
+    -- Cleanup
+    sys.exec("rm -f " .. temp_file)
+
+    http.prepare_content("application/json")
+    http.write_json({
+        status = 1000,
+        log = log
     })
 end
 

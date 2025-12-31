@@ -1,0 +1,109 @@
+<%+header%>
+<h2 name="content"><%:Update OpenProxy%></h2>
+
+<div class="cbi-map-descr">
+    <%:Check for updates and upgrade to the latest version directly from GitHub. Both stable and beta versions are supported.%>
+</div>
+
+<div class="cbi-section">
+    <div class="cbi-section-node">
+        <div class="cbi-value">
+            <label class="cbi-value-title"><%:Current Version%></label>
+            <div class="cbi-value-field">
+                <span id="current_version"><%:Checking...%></span>
+            </div>
+        </div>
+        
+        <div class="cbi-value">
+            <label class="cbi-value-title"><%:Latest Stable%></label>
+            <div class="cbi-value-field">
+                <span id="stable_version"><%:Checking...%></span>
+                <input type="button" class="cbi-button cbi-button-apply" id="btn_update_stable" value="<%:Update%>" style="display:none; margin-left: 10px;" onclick="performUpdate('stable')" />
+            </div>
+        </div>
+
+        <div class="cbi-value">
+            <label class="cbi-value-title"><%:Latest Beta%></label>
+            <div class="cbi-value-field">
+                <span id="beta_version"><%:Checking...%></span>
+                <input type="button" class="cbi-button cbi-button-apply" id="btn_update_beta" value="<%:Update%>" style="display:none; margin-left: 10px;" onclick="performUpdate('beta')" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cbi-section" id="log_section" style="display:none">
+    <h3><%:Update Log%></h3>
+    <textarea id="update_log" class="cbi-input-textarea" style="width: 100%; height: 300px; font-family: monospace;" readonly></textarea>
+</div>
+
+<script type="text/javascript">//<![CDATA[
+    var updateData = {};
+
+    function checkUpdate() {
+        XHR.get('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "check_update")%>', null, function(x, data) {
+            if (data) {
+                updateData = data;
+                document.getElementById('current_version').innerHTML = data.current_version || 'Unknown';
+                
+                if (data.stable_version) {
+                    document.getElementById('stable_version').innerHTML = data.stable_version;
+                    document.getElementById('btn_update_stable').style.display = 'inline-block';
+                } else {
+                    document.getElementById('stable_version').innerHTML = '<%:Not found%>';
+                }
+
+                if (data.beta_version) {
+                    document.getElementById('beta_version').innerHTML = data.beta_version;
+                    document.getElementById('btn_update_beta').style.display = 'inline-block';
+                } else {
+                    document.getElementById('beta_version').innerHTML = '<%:Not found%>';
+                }
+            } else {
+                document.getElementById('current_version').innerHTML = '<%:Error checking update%>';
+                document.getElementById('stable_version').innerHTML = '<%:Error%>';
+                document.getElementById('beta_version').innerHTML = '<%:Error%>';
+            }
+        });
+    }
+
+    function performUpdate(type) {
+        var url = '';
+        if (type === 'stable') {
+            url = updateData.stable_url;
+        } else if (type === 'beta') {
+            url = updateData.beta_url;
+        }
+
+        if (!url) {
+            alert('<%:Download URL not found%>');
+            return;
+        }
+
+        if (!confirm('<%:Are you sure you want to update? This will reinstall the package.%>')) {
+            return;
+        }
+
+        document.getElementById('log_section').style.display = 'block';
+        var logArea = document.getElementById('update_log');
+        logArea.value = '<%:Starting update...%>\n';
+
+        XHR.get('<%=luci.dispatcher.build_url("admin", "services", "openproxy", "api", "perform_update")%>', { url: url }, function(x, data) {
+            if (data && data.log) {
+                logArea.value += data.log;
+                if (data.status == 1000) {
+                     logArea.value += '\n\n<%:Update Successful! Please reload the page.%>';
+                } else {
+                     logArea.value += '\n\n<%:Update Failed.%>';
+                }
+            } else {
+                logArea.value += '\n<%:Error executing update.%>';
+            }
+        });
+    }
+
+    // Initial check
+    checkUpdate();
+//]]></script>
+
+<%+footer%>
