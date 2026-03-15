@@ -210,6 +210,7 @@ check_config_file() {
     
     # Inject Client Proxy Groups and Rules
     CLIENT_EXPR=""
+    CLIENT_RULES_LINES=""
     # Function to handle each client section
     handle_client_conf() {
         local config=$1
@@ -247,7 +248,10 @@ check_config_file() {
         fi
         
         if [ "$enable" == "1" ] && [ -n "$name" ] && [ -n "$ip" ]; then
-             CLIENT_EXPR="${CLIENT_EXPR}.[\"proxy-groups\"] += [{\"name\": \"${name}\", \"type\": \"select\", \"proxies\": [${proxies_json}]} ] | .[\"rules\"] = [\"SRC-IP-CIDR,${ip}/32,${name}\"] + .[\"rules\"] |"
+             # Add proxy-group via yq expression
+             CLIENT_EXPR="${CLIENT_EXPR}.[\"proxy-groups\"] += [{\"name\": \"${name}\", \"type\": \"select\", \"proxies\": [${proxies_json}]} ] |"
+             # Collect rule lines for positional insertion (done after yq, see inject_client_rules)
+             CLIENT_RULES_LINES="${CLIENT_RULES_LINES}  - SRC-IP-CIDR,${ip}/32,${name}\n"
         fi
     }
     # Load config and iterate
@@ -259,6 +263,45 @@ check_config_file() {
     yq_expr="${port_expr}${ipv6_expr}${tmode_expr}${proxy_expr}${rule_expr}${CLIENT_EXPR}${ui_expr}"
     config_path="$(uci -q get openproxy.config.config_path)"
     tmp_secret=${YACD_SECRET} DASHBOARD_UI=${DASHBOARD_UI} ext_ctl="${LANIP}:${YACD_PORT}" dns_listen=":${dns_port}" enmode="fake-ip" yq e -P "${yq_expr}" ${config_path} > ${CONFIG_FILE}
+
+    # Inject client SRC-IP-CIDR rules at the placeholder or before MATCH
+    inject_client_rules
+}
+
+# Insert collected CLIENT_RULES_LINES into CONFIG_FILE.
+# Insertion point: the '# @CLIENT_RULES' placeholder line inside rules:, or
+# as a fallback, immediately before the first '- MATCH,...' line.
+inject_client_rules() {
+    [ -z "$CLIENT_RULES_LINES" ] && return  # Nothing to inject
+
+    local tmpfile="${CONFIG_FILE}.tmp"
+    # Use printf to expand \n sequences in the collected lines
+    local rules_block
+    rules_block=$(printf '%b' "$CLIENT_RULES_LINES")
+
+    if grep -q '# @CLIENT_RULES' "$CONFIG_FILE"; then
+        # Replace the placeholder line with the client rule lines
+        awk -v block="$rules_block" '
+            /^[[:space:]]*#[[:space:]]*@CLIENT_RULES[[:space:]]*$/ {
+                print block
+                next
+            }
+            { print }
+        ' "$CONFIG_FILE" > "$tmpfile"
+        LOGGER "Client rules injected at @CLIENT_RULES placeholder"
+    else
+        # Fallback: insert before the first MATCH rule
+        awk -v block="$rules_block" '
+            !inserted && /^[[:space:]]*-[[:space:]]*MATCH,/ {
+                print block
+                inserted=1
+            }
+            { print }
+        ' "$CONFIG_FILE" > "$tmpfile"
+        LOGGER "Client rules injected before MATCH (no @CLIENT_RULES placeholder found)"
+    fi
+
+    mv "$tmpfile" "$CONFIG_FILE"
 }
 start_service() {
     enable=$(uci -q get openproxy.config.enable)

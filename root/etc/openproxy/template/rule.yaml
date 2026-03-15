@@ -49,4 +49,8 @@ rules:
   - NOT,((DOMAIN,baidu.com)),PROXY
   - SUB-RULE,(NETWORK,tcp),sub-rule
 
+  # Place the line below in your rules: section where you want per-client
+  # SRC-IP-CIDR rules to be injected. Remove/omit to insert before MATCH.
+  # @CLIENT_RULES
+
   - MATCH,auto
