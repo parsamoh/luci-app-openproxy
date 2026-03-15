@@ -57,6 +57,7 @@ function index()
     entry({"admin", "services", service_name, "api", "perform_update"}, call("api_perform_update")).leaf = true
     entry({"admin", "services", service_name, "api", "dashboard_status"}, call("api_get_dashboard_status")).leaf = true
     entry({"admin", "services", service_name, "api", "install_dashboard"}, call("api_install_dashboard")).leaf = true
+    entry({"admin", "services", service_name, "api", "reload_config"}, call("api_reload_config")).leaf = true
 end
 
 ----------------------------------------------------------------------------------
@@ -442,6 +443,25 @@ function api_clear_logs()
     })
 end
 
+--- Function: Reload Mihomo config (SIGHUP) without touching nftables chains.
+--- Use this after editing YAML proxy/rule configs where firewall rules are unchanged.
+function api_reload_config()
+    -- Regenerate config + SIGHUP Mihomo via the init script reload action
+    local result = sys.call(init_script .. " reload >/dev/null 2>&1")
+    http.prepare_content("application/json")
+    if result == 0 then
+        http.write_json({
+            status = 1000,
+            message = "Config reloaded (no firewall restart)"
+        })
+    else
+        http.write_json({
+            status = 500,
+            message = "Reload failed or service not running"
+        })
+    end
+end
+
 --- Function: Update IP set from URL
 function api_update_ipset()
     local url = http.formvalue("url")
@@ -548,11 +568,15 @@ function api_update_ipset()
     
     -- Clean up temp file
     fs.unlink(temp_file)
+
+    -- Surgically hot-swap only the IP set elements in nftables.
+    -- This avoids a full service restart and prevents network disruption.
+    sys.call(init_script .. " reload_nftables_sets >/dev/null 2>&1")
     
     http.prepare_content("application/json")
     http.write_json({
         status = 1000,
-        message = "IP set updated successfully",
+        message = "IP set updated and reloaded in nftables (no restart required)",
         ipv4_count = #ipv4_list,
         ipv6_count = #ipv6_list,
         region = region,

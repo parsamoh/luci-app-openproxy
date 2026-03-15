@@ -160,6 +160,69 @@ cleanup_nftables() {
     # /etc/init.d/firewall reload 2>/dev/null
 }
 
+# Surgically reload only the region IP sets in nftables without touching chains/rules.
+# Call this after the nftset_*.nft file has been updated on disk.
+reload_nftables_sets() {
+    region=$(uci -q get openproxy.config.region)
+    [[ -z "$region" ]] && region="china"
+
+    LOGGER "Surgical nft set reload for region: $region"
+
+    case "$region" in
+        china)
+            SET4="cnipv4" ; SET6="cnipv6"
+            NFT_FILE="${WORK_PATH}/rules_nft/nftset_all_cn_ips.nft"
+            ;;
+        iran)
+            SET4="iranipv4" ; SET6="iranipv6"
+            NFT_FILE="${WORK_PATH}/rules_nft/nftset_iran_ips.nft"
+            ;;
+        russia)
+            SET4="ruipv4" ; SET6="ruipv6"
+            NFT_FILE="${WORK_PATH}/rules_nft/nftset_russia_ips.nft"
+            ;;
+        *)
+            LOGGER "reload_nftables_sets: unknown region '$region', skipping"
+            return 0
+            ;;
+    esac
+
+    # Check the table exists (service may be stopped)
+    if ! nft list table inet oproxy_tproxy >/dev/null 2>&1 ; then
+        LOGGER "reload_nftables_sets: oproxy_tproxy table not loaded, skipping live reload"
+        return 0
+    fi
+
+    # Atomically flush existing set elements, then load the new file
+    nft flush set inet oproxy_tproxy "${SET4}" 2>/dev/null
+    nft flush set inet oproxy_tproxy "${SET6}" 2>/dev/null
+    nft -f "${NFT_FILE}"
+
+    LOGGER "Surgical nft set reload complete (${SET4}, ${SET6})"
+}
+
+# Reload Mihomo config + optionally refresh nft IP sets.
+# Does NOT touch nftables chains/rules — no network disruption.
+reload_service() {
+    LOGGER "Reloading openproxy (SIGHUP Mihomo + config regeneration)"
+
+    # Regenerate the effective config file from template
+    check_config_file || {
+        LOGGER "Config check failed during reload — aborting reload"
+        return 1
+    }
+
+    # Send SIGHUP so Mihomo picks up the new config without restarting
+    local mihomo_pid
+    mihomo_pid=$(pidof clash mihomo 2>/dev/null | awk '{print $1}')
+    if [ -n "$mihomo_pid" ]; then
+        kill -HUP "$mihomo_pid"
+        LOGGER "Sent SIGHUP to Mihomo (PID $mihomo_pid)"
+    else
+        LOGGER "Mihomo not running — nothing to reload"
+    fi
+}
+
 
 # Check Yaml format startup configuration file: parameter modification, formatting, etc.
 check_config_file() {
