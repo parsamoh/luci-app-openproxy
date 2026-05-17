@@ -3,22 +3,28 @@ define ROUTER_MARK=0x01
 define TPROXY_PORT=3330
 define TPROXY_L4PROTO={ tcp, udp }
 
-# Note: Region-specific IP sets are loaded separately by the init script
-# This file defines the base firewall rules without region-specific IP filtering
+# Note: Region-specific IP sets are loaded separately by the init script.
+# The region_bypass chain is empty by default; the init script adds rules to it
+# based on the configured region (china/iran/russia/none).
 
 table inet oproxy_tproxy {
   chain divert {
-    type filter hook prerouting priority mangle; policy accept;
+    type filter hook prerouting priority -149; policy accept;
     meta l4proto $TPROXY_L4PROTO socket transparent 1 meta mark set $ROUTER_MARK accept
   }
 
+  # Populated at startup by init script with region-specific return rules.
+  chain region_bypass {
+  }
+
   chain prerouting {
-    type filter hook prerouting priority -145; policy accept;
+    type filter hook prerouting priority -150; policy accept;
     meta mark $TPROXY_MARK return
     udp dport 53 return
     tcp dport 53 return
     ip daddr @local_ipv4 return
-    ip6 daddr @all_ipv6 return
+    ip6 daddr @local_ipv6 return
+    jump region_bypass
     udp dport 51820 return
     iifname "wt0" return
     iifname "netbird0" return
@@ -31,9 +37,9 @@ table inet oproxy_tproxy {
     udp dport 53 return
     tcp dport 53 return
     ip daddr @local_ipv4 return
-    ip6 daddr @all_ipv6 return
+    ip6 daddr @local_ipv6 return
+    jump region_bypass
     udp dport 51820 return
     meta l4proto $TPROXY_L4PROTO meta mark set $ROUTER_MARK accept
   }
 }
-

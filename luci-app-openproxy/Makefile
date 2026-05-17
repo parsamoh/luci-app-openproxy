@@ -29,9 +29,9 @@ define Package/$(PKG_NAME)/conffiles
 endef
 
 define Build/Prepare
-	$(CP) $(CURDIR)/../root $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/../luasrc $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/../po $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/po $(PKG_BUILD_DIR)
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/openproxy
 endef
 
