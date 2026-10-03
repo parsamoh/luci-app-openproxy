@@ -151,10 +151,11 @@ jobs:
     - name: Build ${{ matrix.format }} package
       run: |
         cd openwrt_sdk
+        make defconfig
         if [ "${{ matrix.format }}" = "apk" ]; then
           echo "CONFIG_USE_APK=y" >> .config
+          make defconfig
         fi
-        make defconfig
         make package/luci-app-openproxy/prepare
         make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
 
@@ -165,13 +166,13 @@ jobs:
         echo "- SDK Version: ${{ matrix.sdk_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- Packages:" >> $GITHUB_STEP_SUMMARY
-        ls -lh openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy* >> $GITHUB_STEP_SUMMARY || true
+        find openwrt_sdk/bin/packages/ -name "luci-app-openproxy*.${{ matrix.format }}" -exec ls -lh {} + >> $GITHUB_STEP_SUMMARY || true
 
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-openproxy-${{ matrix.format }}
-        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.${{ matrix.format }}
+        path: openwrt_sdk/bin/packages/**/luci-app-openproxy*.${{ matrix.format }}
 
   beta_release:
     runs-on: ubuntu-latest
