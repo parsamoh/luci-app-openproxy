@@ -28,8 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        sdk_version: ['24.10.1']
-        format: ['ipk', 'apk']
+        include:
+          - format: 'ipk'
+            sdk_version: '24.10.1'
+            sdk_url_path: 'releases/24.10.1'
+            sdk_file_prefix: 'openwrt-sdk-24.10.1'
+          - format: 'apk'
+            sdk_version: 'SNAPSHOT'
+            sdk_url_path: 'snapshots'
+            sdk_file_prefix: 'openwrt-sdk'
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.format }}-${{ matrix.sdk_version }}
 
@@ -58,16 +65,16 @@ jobs:
       if: steps.cache-sdk.outputs.cache-hit != 'true'
       run: |
         # 找到 SDK 名称 #
-        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/)
-        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP 'openwrt-sdk-${{ matrix.sdk_version }}-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
+        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/${{ matrix.sdk_url_path }}/targets/x86/64/)
+        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP '${{ matrix.sdk_file_prefix }}-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
         if [ -z "$SDK_FILENAME" ]; then
           echo "未找到 SDK 文件"
           exit 1
         fi
         # 构建完整 URL
         sdk_name=${SDK_FILENAME%.tar.zst}
-        wget -c https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/${sdk_name}.tar.zst
-        tar axf $sdk_name.tar.zst
+        wget -c https://downloads.openwrt.org/${{ matrix.sdk_url_path }}/targets/x86/64/${SDK_FILENAME}
+        tar axf $SDK_FILENAME
         ln -sf $sdk_name openwrt_sdk
 
     - name: Verify SDK directory
