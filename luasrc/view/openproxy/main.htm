@@ -99,6 +99,63 @@
         </fieldset>
         <hr />
         <fieldset class="cbi-section">
+            <legend>
+                <%:Aether Integration (Zero-Trust SOCKS5 proxy)%>
+            </legend>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Enable Aether%>:
+                </label>
+                <div class="cbi-value-field">
+                    <input type="checkbox" name="aether_enable" id="aether_enable" />
+                </div>
+            </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Zero Trust Team%>:
+                </label>
+                <div class="cbi-value-field">
+                    <input type="text" name="aether_team" id="aether_team" placeholder="team-name" style="width:200px" />
+                </div>
+            </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Access ID%>:
+                </label>
+                <div class="cbi-value-field">
+                    <input type="text" name="aether_access_id" id="aether_access_id" placeholder="Client ID" style="width:200px" />
+                </div>
+            </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Access Secret%>:
+                </label>
+                <div class="cbi-value-field">
+                    <input type="password" name="aether_access_secret" id="aether_access_secret" placeholder="Client Secret" style="width:200px" />
+                </div>
+            </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Upstream Route%>:
+                </label>
+                <div class="cbi-value-field">
+                    <select name="aether_upstream" id="aether_upstream" style="width:200px">
+                        <option value="direct">DIRECT / System</option>
+                        <option value="mihomo">Mihomo Proxy Group</option>
+                    </select>
+                </div>
+            </div>
+            <div class="cbi-value">
+                <label class="cbi-field-title">
+                    <%:Subnets to Aether%>:
+                </label>
+                <div class="cbi-value-field">
+                    <textarea name="aether_subnets" id="aether_subnets" placeholder="e.g. 10.0.0.0/8" style="width:200px; height:80px;"></textarea>
+                </div>
+            </div>
+        </fieldset>
+        <hr />
+        <fieldset class="cbi-section">
             <div class="cbi-value">
                 <label class="cbi-field-title">
                     <%:OS Info%>:
@@ -198,7 +255,13 @@
                     "mode": 'NAT+TPROXY',
                     "config_path": document.getElementById("config_path_select").value,
                     "dashboard_type": document.getElementById("dashboard_select").value,
-                    "region": document.getElementById("region_select").value
+                    "region": document.getElementById("region_select").value,
+                    "aether_enable": document.getElementById("aether_enable").checked,
+                    "aether_team": document.getElementById("aether_team").value,
+                    "aether_access_id": document.getElementById("aether_access_id").value,
+                    "aether_access_secret": document.getElementById("aether_access_secret").value,
+                    "aether_upstream": document.getElementById("aether_upstream").value,
+                    "aether_subnets": document.getElementById("aether_subnets").value
                 })
             }).then(response => response.json()).then(data => {
                 document.getElementById("_service_tips").innerHTML = '<b style="color:white">' + data["message"] + '</b>';
@@ -227,6 +290,12 @@
                 document.getElementById("config_path_select").value = data["config_path"];
                 document.getElementById("dashboard_select").value = data["dashboard_type"] || "yacd";
                 document.getElementById("region_select").value = data["region"] || "none";
+                document.getElementById("aether_enable").checked = data["aether_enable"] == '1';
+                document.getElementById("aether_team").value = data["aether_team"] || "";
+                document.getElementById("aether_access_id").value = data["aether_access_id"] || "";
+                document.getElementById("aether_access_secret").value = data["aether_access_secret"] || "";
+                document.getElementById("aether_upstream").value = data["aether_upstream"] || "direct";
+                document.getElementById("aether_subnets").value = data["aether_subnets"] || "";
             })
         }
         function get_service_status() {

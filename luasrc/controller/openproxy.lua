@@ -238,6 +238,12 @@ function api_service_apply()
     local p_config_path = http.formvalue("config_path")
     local p_dashboard_type = http.formvalue("dashboard_type")
     local p_region = http.formvalue("region")
+    local aether_enable = http.formvalue("aether_enable")
+    local aether_team = http.formvalue("aether_team")
+    local aether_access_id = http.formvalue("aether_access_id")
+    local aether_access_secret = http.formvalue("aether_access_secret")
+    local aether_upstream = http.formvalue("aether_upstream")
+    local aether_subnets = http.formvalue("aether_subnets")
     if enable_value == "1" or enable_value == "true" then
         uci:set(service_name, "config", "enable", '1')
     else
@@ -263,6 +269,16 @@ function api_service_apply()
     if p_region then
         uci:set(service_name, "config", "region", p_region)
     end
+    if aether_enable == "1" or aether_enable == "true" then
+        uci:set(service_name, "config", "aether_enable", '1')
+    else
+        uci:set(service_name, "config", "aether_enable", '0')
+    end
+    if aether_team then uci:set(service_name, "config", "aether_team", aether_team) end
+    if aether_access_id then uci:set(service_name, "config", "aether_access_id", aether_access_id) end
+    if aether_access_secret then uci:set(service_name, "config", "aether_access_secret", aether_access_secret) end
+    if aether_upstream then uci:set(service_name, "config", "aether_upstream", aether_upstream) end
+    if aether_subnets then uci:set(service_name, "config", "aether_subnets", aether_subnets) end
     uci:set(service_name, "config", "core", p_core)
     uci:set(service_name, "config", "mode", p_mode or "NAT+TPROXY")
     uci:set(service_name, "config", "config_path", p_config_path)
@@ -309,6 +325,12 @@ function api_get_service_config()
     status.config_path = uci:get(service_name, "config", "config_path")
     status.dashboard_type = uci:get(service_name, "config", "dashboard_type") or "yacd"
     status.region = uci:get(service_name, "config", "region") or "china"
+    status.aether_enable = uci:get(service_name, "config", "aether_enable")
+    status.aether_team = uci:get(service_name, "config", "aether_team")
+    status.aether_access_id = uci:get(service_name, "config", "aether_access_id")
+    status.aether_access_secret = uci:get(service_name, "config", "aether_access_secret")
+    status.aether_upstream = uci:get(service_name, "config", "aether_upstream") or "direct"
+    status.aether_subnets = uci:get(service_name, "config", "aether_subnets") or ""
 
     -- Return status info in JSON format
     http.prepare_content("application/json")
