@@ -34,9 +34,9 @@ jobs:
             sdk_url_path: 'releases/24.10.1'
             sdk_file_prefix: 'openwrt-sdk-24.10.1'
           - format: 'apk'
-            sdk_version: 'SNAPSHOT'
-            sdk_url_path: 'snapshots'
-            sdk_file_prefix: 'openwrt-sdk'
+            sdk_version: '25.12.5'
+            sdk_url_path: 'releases/25.12.5'
+            sdk_file_prefix: 'openwrt-sdk-25.12.5'
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.format }}-${{ matrix.sdk_version }}
 
