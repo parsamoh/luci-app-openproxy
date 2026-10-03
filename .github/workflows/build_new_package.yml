@@ -24,13 +24,14 @@ on:
       - 'images/**'
 
 jobs:
-  build_ipk:
+  build_package:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         sdk_version: ['24.10.1']
+        format: ['ipk', 'apk']
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-ipk-${{ matrix.sdk_version }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.format }}-${{ matrix.sdk_version }}
 
     steps:
     - name: Cache apt packages
@@ -131,6 +132,7 @@ jobs:
         conventional-changelog -p angular -r 2 -i CHANGELOG.md -s
 
     - name: Upload ChangeLog
+      if: matrix.format == 'ipk'
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-openproxy-changelog
@@ -142,13 +144,16 @@ jobs:
         path: |
           openwrt_sdk/build_dir
           openwrt_sdk/staging_dir
-        key: build-cache-ipk-${{ github.sha }}
+        key: build-cache-${{ matrix.format }}-${{ github.sha }}
         restore-keys: |
-          build-cache-ipk-
+          build-cache-${{ matrix.format }}-
 
-    - name: Build IPK package
+    - name: Build ${{ matrix.format }} package
       run: |
         cd openwrt_sdk
+        if [ "${{ matrix.format }}" = "apk" ]; then
+          echo "CONFIG_USE_APK=y" >> .config
+        fi
         make defconfig
         make package/luci-app-openproxy/prepare
         make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
@@ -156,21 +161,21 @@ jobs:
     - name: Generate build summary
       if: always()
       run: |
-        echo "### Build Summary (IPK)" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Summary (${{ matrix.format }})" >> $GITHUB_STEP_SUMMARY
         echo "- SDK Version: ${{ matrix.sdk_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- Packages:" >> $GITHUB_STEP_SUMMARY
         ls -lh openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy* >> $GITHUB_STEP_SUMMARY || true
 
-    - name: Upload .ipk package
+    - name: Upload package
       uses: actions/upload-artifact@v4
       with:
-        name: luci-app-openproxy-ipk
-        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.ipk
+        name: luci-app-openproxy-${{ matrix.format }}
+        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.${{ matrix.format }}
 
   beta_release:
     runs-on: ubuntu-latest
-    needs: [build_ipk]
+    needs: [build_package]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
     - name: Download build artifacts
@@ -191,6 +196,7 @@ jobs:
         prerelease: true
         files: |
           luci-app-openproxy-ipk/*.ipk
+          luci-app-openproxy-apk/*.apk
         body: |
           ## Beta Release
           
@@ -211,7 +217,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [build_ipk]
+    needs: [build_package]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
     - name: Download build artifacts
@@ -225,6 +231,7 @@ jobs:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         files: |
           luci-app-openproxy-ipk/*.ipk
+          luci-app-openproxy-apk/*.apk
         body_path: luci-app-openproxy-changelog/CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
