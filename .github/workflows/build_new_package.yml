@@ -158,6 +158,10 @@ jobs:
     - name: Build ${{ matrix.format }} package
       run: |
         cd openwrt_sdk
+        # Bypass hash checks due to Ubuntu 24.04 zstd/git tarball determinism issues
+        find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_HASH:=.*/PKG_HASH:=skip/g' {} + || true
+        find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_MIRROR_HASH:=.*/PKG_MIRROR_HASH:=skip/g' {} + || true
+        
         make defconfig
         if [ "${{ matrix.format }}" = "apk" ]; then
           echo "CONFIG_USE_APK=y" >> .config
