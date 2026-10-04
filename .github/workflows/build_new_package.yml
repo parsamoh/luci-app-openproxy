@@ -189,8 +189,8 @@ jobs:
           echo "PKG_VERSION=$VERSION" >> $GITHUB_ENV
         else
           DATE=$(date +'%Y.%m.%d')
-          SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "PKG_VERSION=${DATE}_git${SHA}" >> $GITHUB_ENV
+          # APK versioning restricts arbitrary strings (like _git[hex])
+          echo "PKG_VERSION=${DATE}" >> $GITHUB_ENV
         fi
         echo "PKG_RELEASE=1" >> $GITHUB_ENV
 
