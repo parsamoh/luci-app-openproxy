@@ -24,33 +24,25 @@ on:
       - 'images/**'
 
 jobs:
-  build_package:
+  build_ipk:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - format: 'ipk'
-            sdk_version: '24.10.1'
-            sdk_url_path: 'releases/24.10.1'
-            sdk_file_prefix: 'openwrt-sdk-24.10.1'
-          - format: 'apk'
-            sdk_version: '25.12.5'
-            sdk_url_path: 'releases/25.12.5'
-            sdk_file_prefix: 'openwrt-sdk-25.12.5'
+        sdk_version: ['24.10.1']
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.format }}-${{ matrix.sdk_version }}
+      group: ${{ github.workflow }}-${{ github.ref }}-ipk-${{ matrix.sdk_version }}
 
     steps:
     - name: Cache apt packages
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-setuptools rsync unzip zlib1g-dev file wget curl
+        packages: build-essential git wget curl unzip
         version: 1.0
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-setuptools rsync unzip zlib1g-dev file wget curl
+        sudo apt-get install -y build-essential git wget curl unzip
 
     - name: Cache OpenWrt SDK
       uses: actions/cache@v4
@@ -65,16 +57,16 @@ jobs:
       if: steps.cache-sdk.outputs.cache-hit != 'true'
       run: |
         # 找到 SDK 名称 #
-        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/${{ matrix.sdk_url_path }}/targets/x86/64/)
-        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP '${{ matrix.sdk_file_prefix }}-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
+        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/)
+        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP 'openwrt-sdk-${{ matrix.sdk_version }}-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
         if [ -z "$SDK_FILENAME" ]; then
           echo "未找到 SDK 文件"
           exit 1
         fi
         # 构建完整 URL
         sdk_name=${SDK_FILENAME%.tar.zst}
-        wget -c https://downloads.openwrt.org/${{ matrix.sdk_url_path }}/targets/x86/64/${SDK_FILENAME}
-        tar axf $SDK_FILENAME
+        wget -c https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/${sdk_name}.tar.zst
+        tar axf $sdk_name.tar.zst
         ln -sf $sdk_name openwrt_sdk
 
     - name: Verify SDK directory
@@ -128,9 +120,7 @@ jobs:
           # Beta / Snapshot
           DATE=$(date +'%Y.%m.%d')
           SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          # IPK allows hyphens; APK requires _suffix format (no bare hyphens)
-          echo "PKG_VERSION_IPK=$DATE-beta-$SHA" >> $GITHUB_ENV
-          echo "PKG_VERSION_APK=${DATE}_git${SHA}" >> $GITHUB_ENV
+          echo "PKG_VERSION=$DATE-beta-$SHA" >> $GITHUB_ENV
           echo "PKG_RELEASE=1" >> $GITHUB_ENV
         fi
     
@@ -141,7 +131,6 @@ jobs:
         conventional-changelog -p angular -r 2 -i CHANGELOG.md -s
 
     - name: Upload ChangeLog
-      if: matrix.format == 'ipk'
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-openproxy-changelog
@@ -153,54 +142,112 @@ jobs:
         path: |
           openwrt_sdk/build_dir
           openwrt_sdk/staging_dir
-        key: build-cache-${{ matrix.format }}-${{ github.sha }}
+        key: build-cache-ipk-${{ github.sha }}
         restore-keys: |
-          build-cache-${{ matrix.format }}-
+          build-cache-ipk-
 
-    - name: Build ${{ matrix.format }} package
+    - name: Build IPK package
       run: |
         cd openwrt_sdk
-        # Bypass hash checks due to Ubuntu 24.04 zstd/git tarball determinism issues
-        find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_HASH:=.*/PKG_HASH:=skip/g' {} + || true
-        find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_MIRROR_HASH:=.*/PKG_MIRROR_HASH:=skip/g' {} + || true
-        
-        # Select the right version for the package format
-        # For tags: PKG_VERSION is set; for betas: PKG_VERSION_IPK/APK are set
-        if [ "${{ matrix.format }}" = "apk" ]; then
-          BUILD_VER="${PKG_VERSION_APK:-$PKG_VERSION}"
-        else
-          BUILD_VER="${PKG_VERSION_IPK:-$PKG_VERSION}"
-        fi
-        
         make defconfig
-        if [ "${{ matrix.format }}" = "apk" ]; then
-          echo "CONFIG_USE_APK=y" >> .config
-          make defconfig
-        fi
         make package/luci-app-openproxy/prepare
-        # IGNORE_ERRORS=m: continue past dependency package failures (e.g. libnl-tiny APK version issues)
-        # Our package is PKGARCH:=all with empty Build/Compile, so it doesn't need deps compiled
-        make package/luci-app-openproxy/compile V=s IGNORE_ERRORS=m -j$(($(nproc) + 1)) BUILD_VERSION="$BUILD_VER" BUILD_RELEASE="${{ env.PKG_RELEASE }}" || \
-        make package/luci-app-openproxy/compile V=s IGNORE_ERRORS=m -j1 BUILD_VERSION="$BUILD_VER" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
+        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
 
     - name: Generate build summary
       if: always()
       run: |
-        echo "### Build Summary (${{ matrix.format }})" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Summary (IPK)" >> $GITHUB_STEP_SUMMARY
         echo "- SDK Version: ${{ matrix.sdk_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- Packages:" >> $GITHUB_STEP_SUMMARY
-        find openwrt_sdk/bin/packages/ -name "luci-app-openproxy*.${{ matrix.format }}" -exec ls -lh {} + >> $GITHUB_STEP_SUMMARY || true
+        ls -lh openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy* >> $GITHUB_STEP_SUMMARY || true
 
-    - name: Upload package
+    - name: Upload .ipk package
       uses: actions/upload-artifact@v4
       with:
-        name: luci-app-openproxy-${{ matrix.format }}
-        path: openwrt_sdk/bin/packages/**/luci-app-openproxy*.${{ matrix.format }}
+        name: luci-app-openproxy-ipk
+        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.ipk
+
+  build_apk:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-apk
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref }}
+        fetch-depth: 1
+
+    - name: Determine Version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "PKG_VERSION=$VERSION" >> $GITHUB_ENV
+        else
+          DATE=$(date +'%Y.%m.%d')
+          SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "PKG_VERSION=${DATE}_git${SHA}" >> $GITHUB_ENV
+        fi
+        echo "PKG_RELEASE=1" >> $GITHUB_ENV
+
+    - name: Build APK package via Docker SDK
+      run: |
+        # Start the official OpenWrt SDK container
+        CONTAINER_ID=$(docker create openwrt/sdk:x86-64-25.12.2 sleep 3600)
+        docker start $CONTAINER_ID
+
+        # Copy source into the SDK package directory
+        docker exec -u root $CONTAINER_ID mkdir -p /builder/package
+        docker cp . $CONTAINER_ID:/builder/package/luci-app-openproxy
+        docker exec -u root $CONTAINER_ID chmod -R 777 /builder/package/luci-app-openproxy
+
+        # Create output directory
+        docker exec -u root $CONTAINER_ID mkdir -p /tmp/artifacts
+        docker exec -u root $CONTAINER_ID chmod 777 /tmp/artifacts
+
+        # Build inside the container
+        docker exec $CONTAINER_ID bash -c "
+          cd /builder && \
+          [ -x ./scripts/feeds ] && ./scripts/feeds update -a || true && \
+          [ -x ./scripts/feeds ] && ./scripts/feeds install -a || true && \
+          rm -f .config && \
+          touch .config && \
+          echo '# CONFIG_ALL is not set' >> .config && \
+          echo '# CONFIG_ALL_KMODS is not set' >> .config && \
+          echo '# CONFIG_ALL_NONSHARED is not set' >> .config && \
+          echo 'CONFIG_PACKAGE_luci-app-openproxy=m' >> .config && \
+          (make defconfig || true) && \
+          make package/luci-app-openproxy/compile V=s BUILD_VERSION=\"${{ env.PKG_VERSION }}\" BUILD_RELEASE=\"${{ env.PKG_RELEASE }}\" && \
+          find bin/packages/ -name 'luci-app-openproxy*.apk' -exec cp {} /tmp/artifacts/ \;
+        "
+
+        # Extract artifacts
+        mkdir -p ./artifacts
+        docker cp $CONTAINER_ID:/tmp/artifacts/. ./artifacts/
+        docker rm -f $CONTAINER_ID
+
+    - name: Generate build summary
+      if: always()
+      run: |
+        echo "### Build Summary (APK)" >> $GITHUB_STEP_SUMMARY
+        echo "- SDK: openwrt/sdk:x86-64-25.12.2" >> $GITHUB_STEP_SUMMARY
+        echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Packages:" >> $GITHUB_STEP_SUMMARY
+        ls -lh ./artifacts/ >> $GITHUB_STEP_SUMMARY || true
+
+    - name: Upload .apk package
+      uses: actions/upload-artifact@v4
+      with:
+        name: luci-app-openproxy-apk
+        path: ./artifacts/luci-app-openproxy*.apk
 
   beta_release:
     runs-on: ubuntu-latest
-    needs: [build_package]
+    needs: [build_ipk, build_apk]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
     - name: Download build artifacts
@@ -242,7 +289,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [build_package]
+    needs: [build_ipk, build_apk]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
     - name: Download build artifacts
