@@ -90,11 +90,20 @@ jobs:
           perl -0777 -pi -e 's/ifdef BUILD_VERSION.*?endif/PKG_VERSION:=${{ needs.prepare.outputs.PKG_VERSION }}/s' Makefile
           perl -0777 -pi -e 's/ifdef BUILD_RELEASE.*?endif/PKG_RELEASE:=${{ needs.prepare.outputs.PKG_RELEASE }}/s' Makefile
 
+      - name: Prepare feed directory structure
+        run: |
+          mkdir luci-app-openproxy
+          mv Makefile luasrc po root tools luci-app-openproxy/ 2>/dev/null || true
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "Restructure for SDK"
+
       - name: Build Packages
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
-          FEEDNAME: luci-app-openproxy
+          FEEDNAME: openproxy
           PACKAGES: luci-app-openproxy
           NO_REFRESH_CHECK: true
 
