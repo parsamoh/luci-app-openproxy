@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "create-github-action-workflow-specification": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/create-github-action-workflow-specification/SKILL.md",
+      "computedHash": "527e6c77d921d58a9d0059aa95d0d14b441d2166f9c20518263048a56ca8fbbb"
+    },
+    "openwrt-dev": {
+      "source": "luckyegg168/openwrt-skill",
+      "sourceType": "github",
+      "skillPath": "openwrt-dev/SKILL.md",
+      "computedHash": "b1cb81cd60f4a6b0e32fafd420de8307a1537c232a991c5e22636e73dc002a7a"
+    }
+  }
+}

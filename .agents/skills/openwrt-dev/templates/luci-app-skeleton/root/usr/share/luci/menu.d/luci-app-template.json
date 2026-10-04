@@ -1,0 +1,14 @@
+{
+    "admin/services/{{APP_NAME}}": {
+        "title": "{{APP_TITLE}}",
+        "order": 30,
+        "action": {
+            "type": "view",
+            "path": "{{APP_NAME}}/settings"
+        },
+        "depends": {
+            "acl": ["luci-app-{{APP_NAME}}"],
+            "uci": {"{{UCI_CONFIG}}": true}
+        }
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "luci-app-{{APP_NAME}}": {
+        "description": "Grant access to {{APP_TITLE}}",
+        "read": {
+            "uci": ["{{UCI_CONFIG}}"],
+            "ubus": {
+                "service": ["list"],
+                "luci": ["getInitList", "getLocaltime"]
+            },
+            "file": {
+                "/etc/config/{{UCI_CONFIG}}": ["read"]
+            }
+        },
+        "write": {
+            "uci": ["{{UCI_CONFIG}}"],
+            "ubus": {
+                "luci": ["setInitAction"]
+            }
+        }
+    }
+}

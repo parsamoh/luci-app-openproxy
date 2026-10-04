@@ -1,0 +1,84 @@
+# ============================================================
+# OpenWrt 標準套件 Makefile 模板
+# ============================================================
+# 使用說明：
+#   1. 將 {{VARIABLE}} 替換為你的實際值
+#   2. 確保 Makefile 使用 Tab 縮排（非空格）
+#   3. 放置於 package/{{PKG_NAME}}/Makefile
+#   4. 適用版本：OpenWrt 23.05+
+# ============================================================
+
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:={{PKG_NAME}}
+PKG_VERSION:={{PKG_VERSION}}
+PKG_RELEASE:=1
+
+# === 來源取得方式（三選一） ===
+
+# 方式一：從 URL 下載 tarball
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:={{PKG_SOURCE_URL}}
+PKG_HASH:={{PKG_HASH_SHA256}}
+
+# 方式二：從 Git 取得
+# PKG_SOURCE_PROTO:=git
+# PKG_SOURCE_URL:={{PKG_GIT_URL}}
+# PKG_SOURCE_VERSION:={{PKG_GIT_COMMIT_HASH}}
+# PKG_MIRROR_HASH:={{PKG_MIRROR_HASH}}
+
+# 方式三：本地原始碼（放在 src/ 子目錄）
+# PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+
+PKG_LICENSE:={{PKG_LICENSE}}
+PKG_LICENSE_FILES:={{PKG_LICENSE_FILE}}
+PKG_MAINTAINER:={{YOUR_NAME}} <{{YOUR_EMAIL}}>
+
+# 建構系統選擇（取消註解適用的）
+# include $(INCLUDE_DIR)/cmake.mk
+# include $(INCLUDE_DIR)/meson.mk
+include $(INCLUDE_DIR)/package.mk
+
+# === 套件定義 ===
+define Package/$(PKG_NAME)
+  SECTION:={{SECTION}}
+  CATEGORY:={{CATEGORY}}
+  TITLE:={{PKG_TITLE}}
+  URL:={{PKG_URL}}
+  DEPENDS:={{DEPENDS}}
+endef
+
+define Package/$(PKG_NAME)/description
+  {{PKG_DESCRIPTION}}
+endef
+
+# === 使用者可設定選項（可選） ===
+define Package/$(PKG_NAME)/conffiles
+/etc/config/$(PKG_NAME)
+endef
+
+# === 編譯步驟 ===
+# 簡易 Makefile 專案
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS)" \
+		LDFLAGS="$(TARGET_LDFLAGS)"
+endef
+
+# === 安裝步驟 ===
+define Package/$(PKG_NAME)/install
+	# 安裝二進位
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/{{BINARY_NAME}} $(1)/usr/bin/
+
+	# 安裝 procd init 腳本
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/{{PKG_NAME}}.init $(1)/etc/init.d/$(PKG_NAME)
+
+	# 安裝預設設定
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/{{PKG_NAME}}.config $(1)/etc/config/$(PKG_NAME)
+endef
+
+$(eval $(call BuildPackage,$(PKG_NAME)))

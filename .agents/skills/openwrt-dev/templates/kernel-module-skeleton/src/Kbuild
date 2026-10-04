@@ -1,0 +1,1 @@
+obj-m += {{MOD_NAME}}.o
