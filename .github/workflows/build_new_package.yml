@@ -1,4 +1,3 @@
-
 name: Build openWRT ipk/apk package
 
 permissions:
@@ -24,7 +23,50 @@ on:
       - 'images/**'
 
 jobs:
+  prepare:
+    name: Prepare Release Data
+    runs-on: ubuntu-latest
+    outputs:
+      PKG_VERSION: ${{ steps.version.outputs.PKG_VERSION }}
+      PKG_RELEASE: ${{ steps.version.outputs.PKG_RELEASE }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            VERSION=${VERSION#v}
+            echo "PKG_VERSION=$VERSION" >> $GITHUB_OUTPUT
+            echo "PKG_RELEASE=1" >> $GITHUB_OUTPUT
+          else
+            # Beta / Snapshot
+            DATE=$(date +'%Y.%m.%d')
+            echo "PKG_VERSION=${DATE}" >> $GITHUB_OUTPUT
+            echo "PKG_RELEASE=1" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate ChangeLog
+        run: |
+          npx conventional-changelog-cli -p angular -r 2 -i CHANGELOG.md -s
+
+      - name: Upload ChangeLog
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-openproxy-changelog
+          path: CHANGELOG.md
+
   build_ipk:
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -33,16 +75,10 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}-ipk-${{ matrix.sdk_version }}
 
     steps:
-    - name: Cache apt packages
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: build-essential git wget curl unzip
-        version: 1.0
-
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential git wget curl unzip
+        sudo apt-get install -y build-essential git wget curl unzip file
 
     - name: Cache OpenWrt SDK
       uses: actions/cache@v4
@@ -56,29 +92,26 @@ jobs:
     - name: Download OpenWrt release SDK
       if: steps.cache-sdk.outputs.cache-hit != 'true'
       run: |
-        # 找到 SDK 名称 #
-        PAGE_CONTENT=$(curl -s https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/)
-        SDK_FILENAME=$(echo "$PAGE_CONTENT" | grep -oP 'openwrt-sdk-${{ matrix.sdk_version }}-x86-64_gcc-.*?_musl\.Linux-x86_64\.tar\.zst' | head -1)
+        wget -qO sha256sums https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/sha256sums
+        SDK_FILENAME=$(grep 'openwrt-sdk' sha256sums | grep '\.tar\.zst' | awk '{print $2}' | head -n 1)
         if [ -z "$SDK_FILENAME" ]; then
-          echo "未找到 SDK 文件"
+          echo "Error: SDK file not found in sha256sums"
           exit 1
         fi
-        # 构建完整 URL
+        SDK_FILENAME=$(basename "$SDK_FILENAME" | sed 's/^\*//')
         sdk_name=${SDK_FILENAME%.tar.zst}
-        wget -c https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/${sdk_name}.tar.zst
-        tar axf $sdk_name.tar.zst
-        ln -sf $sdk_name openwrt_sdk
+        
+        wget -c https://downloads.openwrt.org/releases/${{ matrix.sdk_version }}/targets/x86/64/${SDK_FILENAME}
+        tar axf $SDK_FILENAME
 
     - name: Verify SDK directory
       run: |
-        # Find the actual SDK directory
         SDK_DIR=$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -1)
         if [ -z "$SDK_DIR" ]; then
           echo "Error: No openwrt-sdk-* directory found"
           ls -la
           exit 1
         fi
-        # Create symlink if it doesn't exist
         if [ ! -L "openwrt_sdk" ]; then
           ln -sf "$(basename $SDK_DIR)" openwrt_sdk
         fi
@@ -108,33 +141,6 @@ jobs:
         path: openwrt_sdk/package/luci-app-openproxy
         fetch-depth: 1
     
-    - name: Determine Version
-      id: version
-      run: |
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION#v}
-          echo "PKG_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "PKG_RELEASE=1" >> $GITHUB_ENV
-        else
-          # Beta / Snapshot
-          DATE=$(date +'%Y.%m.%d')
-          echo "PKG_VERSION=${DATE}" >> $GITHUB_ENV
-          echo "PKG_RELEASE=1" >> $GITHUB_ENV
-        fi
-    
-    - name: Generate ChangeLog by conventional-changelog
-      run: |
-        npm install -g conventional-changelog-cli
-        cd openwrt_sdk/package/luci-app-openproxy
-        conventional-changelog -p angular -r 2 -i CHANGELOG.md -s
-
-    - name: Upload ChangeLog
-      uses: actions/upload-artifact@v4
-      with:
-        name: luci-app-openproxy-changelog
-        path: openwrt_sdk/package/luci-app-openproxy/CHANGELOG.md
-
     - name: Cache build artifacts
       uses: actions/cache@v4
       with:
@@ -150,7 +156,7 @@ jobs:
         cd openwrt_sdk
         make defconfig
         make package/luci-app-openproxy/prepare
-        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
+        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ needs.prepare.outputs.PKG_VERSION }}" BUILD_RELEASE="${{ needs.prepare.outputs.PKG_RELEASE }}"
 
     - name: Generate build summary
       if: always()
@@ -168,6 +174,7 @@ jobs:
         path: openwrt_sdk/bin/packages/**/luci-app-openproxy*.ipk
 
   build_apk:
+    needs: prepare
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-apk
@@ -179,36 +186,18 @@ jobs:
         ref: ${{ github.ref }}
         fetch-depth: 1
 
-    - name: Determine Version
-      id: version
-      run: |
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION#v}
-          echo "PKG_VERSION=$VERSION" >> $GITHUB_ENV
-        else
-          DATE=$(date +'%Y.%m.%d')
-          # APK versioning restricts arbitrary strings (like _git[hex])
-          echo "PKG_VERSION=${DATE}" >> $GITHUB_ENV
-        fi
-        echo "PKG_RELEASE=1" >> $GITHUB_ENV
-
     - name: Build APK package via Docker SDK
       run: |
-        # Start the official OpenWrt SDK container
         CONTAINER_ID=$(docker create openwrt/sdk:x86-64-25.12.2 sleep 3600)
         docker start $CONTAINER_ID
 
-        # Copy source into the SDK package directory
         docker exec -u root $CONTAINER_ID mkdir -p /builder/package
         docker cp . $CONTAINER_ID:/builder/package/luci-app-openproxy
         docker exec -u root $CONTAINER_ID chmod -R 777 /builder/package/luci-app-openproxy
 
-        # Create output directory
         docker exec -u root $CONTAINER_ID mkdir -p /tmp/artifacts
         docker exec -u root $CONTAINER_ID chmod 777 /tmp/artifacts
 
-        # Build inside the container
         docker exec $CONTAINER_ID bash -c "
           cd /builder && \
           [ -x ./scripts/feeds ] && ./scripts/feeds update -a || true && \
@@ -220,11 +209,10 @@ jobs:
           echo '# CONFIG_ALL_NONSHARED is not set' >> .config && \
           echo 'CONFIG_PACKAGE_luci-app-openproxy=m' >> .config && \
           (make defconfig || true) && \
-          make package/luci-app-openproxy/compile V=s BUILD_VERSION=\"${{ env.PKG_VERSION }}\" BUILD_RELEASE=\"${{ env.PKG_RELEASE }}\" && \
+          make package/luci-app-openproxy/compile V=s BUILD_VERSION=\"${{ needs.prepare.outputs.PKG_VERSION }}\" BUILD_RELEASE=\"${{ needs.prepare.outputs.PKG_RELEASE }}\" && \
           find bin/packages/ -name 'luci-app-openproxy*.apk' -exec cp {} /tmp/artifacts/ \;
         "
 
-        # Extract artifacts
         mkdir -p ./artifacts
         docker cp $CONTAINER_ID:/tmp/artifacts/. ./artifacts/
         docker rm -f $CONTAINER_ID
@@ -299,7 +287,7 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
+        tag_name: ${{ github.ref_name }}
         files: |
           luci-app-openproxy-ipk/*.ipk
           luci-app-openproxy-apk/*.apk
