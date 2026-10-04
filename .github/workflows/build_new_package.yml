@@ -94,7 +94,7 @@ jobs:
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
-          FEEDNAME: openproxy
+          FEEDNAME: luci-app-openproxy
           PACKAGES: luci-app-openproxy
           NO_REFRESH_CHECK: true
 
