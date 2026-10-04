@@ -128,7 +128,9 @@ jobs:
           # Beta / Snapshot
           DATE=$(date +'%Y.%m.%d')
           SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "PKG_VERSION=$DATE-beta-$SHA" >> $GITHUB_ENV
+          # IPK allows hyphens; APK requires _suffix format (no bare hyphens)
+          echo "PKG_VERSION_IPK=$DATE-beta-$SHA" >> $GITHUB_ENV
+          echo "PKG_VERSION_APK=${DATE}_git${SHA}" >> $GITHUB_ENV
           echo "PKG_RELEASE=1" >> $GITHUB_ENV
         fi
     
@@ -162,14 +164,24 @@ jobs:
         find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_HASH:=.*/PKG_HASH:=skip/g' {} + || true
         find package/ feeds/ -type f -name Makefile -exec sed -i 's/^PKG_MIRROR_HASH:=.*/PKG_MIRROR_HASH:=skip/g' {} + || true
         
+        # Select the right version for the package format
+        # For tags: PKG_VERSION is set; for betas: PKG_VERSION_IPK/APK are set
+        if [ "${{ matrix.format }}" = "apk" ]; then
+          BUILD_VER="${PKG_VERSION_APK:-$PKG_VERSION}"
+        else
+          BUILD_VER="${PKG_VERSION_IPK:-$PKG_VERSION}"
+        fi
+        
         make defconfig
         if [ "${{ matrix.format }}" = "apk" ]; then
           echo "CONFIG_USE_APK=y" >> .config
           make defconfig
         fi
         make package/luci-app-openproxy/prepare
-        make package/luci-app-openproxy/compile V=s -j$(($(nproc) + 1)) BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}" || \
-        make package/luci-app-openproxy/compile V=s -j1 BUILD_VERSION="${{ env.PKG_VERSION }}" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
+        # IGNORE_ERRORS=m: continue past dependency package failures (e.g. libnl-tiny APK version issues)
+        # Our package is PKGARCH:=all with empty Build/Compile, so it doesn't need deps compiled
+        make package/luci-app-openproxy/compile V=s IGNORE_ERRORS=m -j$(($(nproc) + 1)) BUILD_VERSION="$BUILD_VER" BUILD_RELEASE="${{ env.PKG_RELEASE }}" || \
+        make package/luci-app-openproxy/compile V=s IGNORE_ERRORS=m -j1 BUILD_VERSION="$BUILD_VER" BUILD_RELEASE="${{ env.PKG_RELEASE }}"
 
     - name: Generate build summary
       if: always()
