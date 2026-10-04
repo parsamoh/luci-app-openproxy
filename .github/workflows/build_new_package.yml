@@ -119,8 +119,7 @@ jobs:
         else
           # Beta / Snapshot
           DATE=$(date +'%Y.%m.%d')
-          SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "PKG_VERSION=$DATE-beta-$SHA" >> $GITHUB_ENV
+          echo "PKG_VERSION=${DATE}" >> $GITHUB_ENV
           echo "PKG_RELEASE=1" >> $GITHUB_ENV
         fi
     
@@ -160,13 +159,13 @@ jobs:
         echo "- SDK Version: ${{ matrix.sdk_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- Packages:" >> $GITHUB_STEP_SUMMARY
-        ls -lh openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy* >> $GITHUB_STEP_SUMMARY || true
+        find openwrt_sdk/bin/packages/ -name "luci-app-openproxy*.ipk" -exec ls -lh {} \; >> $GITHUB_STEP_SUMMARY || true
 
     - name: Upload .ipk package
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-openproxy-ipk
-        path: openwrt_sdk/bin/packages/x86_64/base/luci-app-openproxy*.ipk
+        path: openwrt_sdk/bin/packages/**/luci-app-openproxy*.ipk
 
   build_apk:
     runs-on: ubuntu-latest
